@@ -1,0 +1,37 @@
+{% extends "plusone/base.html" %}
+{% block title %}Edit {{ post.title }} | Plus One{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Edit active card</p>
+    <h1>Update your Plus One.</h1>
+    <p class="lead">You can edit the activity while it is active, or cancel it if the plan is no longer happening.</p>
+  </div>
+</section>
+
+<section class="two-column create-layout">
+  <article class="panel">
+    <h2>Edit structured fields</h2>
+    <form method="post" class="stacked-form">
+      {% csrf_token %}
+      {{ post_form.as_p }}
+      <button class="primary-action" name="action" value="save">Save changes</button>
+      <button class="primary-action coral" name="action" value="cancel" formnovalidate>Cancel this card</button>
+    </form>
+  </article>
+
+  <article class="activity-card create-preview color-{{ post_preview.activity_type }}" aria-label="Edited card preview">
+    <div class="card-meta">
+      <span data-post-preview-activity>{{ post_preview.activity_label }}</span>
+      <span><span data-post-preview-expire>{{ post_preview.expire_minutes }}</span>m live</span>
+    </div>
+    <h2 data-post-preview-title>{{ post_preview.title }}</h2>
+    <p data-post-preview-description>{{ post_preview.description }}</p>
+    <div class="chips">
+      <span data-post-preview-location>{{ post_preview.location }}</span>
+      <span data-post-preview-time>{{ post_preview.start_time }}</span>
+      <span>{{ post.get_status_display }}</span>
+    </div>
+  </article>
+</section>
+{% endblock %}

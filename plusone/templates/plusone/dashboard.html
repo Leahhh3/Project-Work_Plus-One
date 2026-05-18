@@ -1,0 +1,67 @@
+{% extends "plusone/base.html" %}
+{% block title %}My Plus Ones | Plus One{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Dashboard</p>
+    <h1>Track your active posts and matches.</h1>
+    <p class="lead">This page shows how user interaction changes the database during the demo.</p>
+  </div>
+  <a class="primary-action" href="{% url 'create_post' %}">Create another</a>
+</section>
+
+<section class="dashboard-grid">
+  <article class="panel">
+    <h2>Active posts</h2>
+    {% for post in active_posts %}
+      <div class="row-card">
+        <strong>{{ post.title }}</strong>
+        <span>{{ post.location.name }} · <span class="countdown" data-deadline="{{ post.expire_time|date:'c' }}">--</span></span>
+        <span>{{ post.interested_count }} interested student{{ post.interested_count|pluralize }}</span>
+        <div class="row-actions">
+          <a href="{% url 'post_detail' post.id %}">View</a>
+          <a href="{% url 'edit_post' post.id %}">Edit</a>
+        </div>
+      </div>
+    {% empty %}
+      <p>No active posts.</p>
+    {% endfor %}
+  </article>
+
+  <article class="panel">
+    <h2>Matches</h2>
+    {% for match in matches %}
+      <a class="row-card" href="{% url 'chat' match.id %}">
+        <strong>{{ match.post.title }}</strong>
+        <span>{{ match.get_status_display }} · {{ match.post.location.name }}</span>
+      </a>
+    {% empty %}
+      <p>No matches yet.</p>
+    {% endfor %}
+  </article>
+
+  <article class="panel">
+    <h2>Expired posts</h2>
+    {% for post in expired_posts %}
+      <a class="row-card muted" href="{% url 'post_detail' post.id %}">
+        <strong>{{ post.title }}</strong>
+        <span>Expired {{ post.expire_time|date:"M j, H:i" }}</span>
+      </a>
+    {% empty %}
+      <p>No expired posts.</p>
+    {% endfor %}
+  </article>
+
+  <article class="panel">
+    <h2>Cancelled posts</h2>
+    {% for post in cancelled_posts %}
+      <a class="row-card muted" href="{% url 'post_detail' post.id %}">
+        <strong>{{ post.title }}</strong>
+        <span>Cancelled · {{ post.location.name }}</span>
+      </a>
+    {% empty %}
+      <p>No cancelled posts.</p>
+    {% endfor %}
+  </article>
+</section>
+{% endblock %}

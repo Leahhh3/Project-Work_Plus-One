@@ -1,0 +1,49 @@
+{% extends "plusone/base.html" %}
+{% block title %}Anonymous Chat | Plus One{% endblock %}
+{% block content %}
+<section class="chat-shell">
+  <aside class="panel chat-context">
+    <p class="eyebrow">Anonymous vibe chat</p>
+    <h1>{{ match.post.title }}</h1>
+    <p>{{ match.post.location.name }} · {{ match.post.start_time|date:"M j, H:i" }}</p>
+    <p>Status: <strong>{{ match.get_status_display }}</strong></p>
+    <p>Chat timer: <strong class="countdown" data-deadline="{{ match.chat_expires_at|date:'c' }}">--</strong></p>
+    <div class="agree-state">
+      <span>Poster agreed: {{ match.poster_agreed|yesno:"yes,no" }}</span>
+      <span>Swiper agreed: {{ match.swiper_agreed|yesno:"yes,no" }}</span>
+    </div>
+    {% if match.status == "chatting" %}
+      <form method="post">
+        {% csrf_token %}
+        <button class="primary-action coral" name="action" value="agree">Agree to meet</button>
+      </form>
+    {% endif %}
+  </aside>
+
+  <article class="panel chat-panel">
+    <div class="messages-list">
+      {% for message in messages_list %}
+        <div class="bubble {% if message.is_system %}system{% elif message.sender_id == user.id %}mine{% else %}theirs{% endif %}">
+          <small>
+            {% if message.is_system %}Icebreaker{% elif message.sender_id == user.id %}You{% else %}Anonymous match{% endif %}
+            · {{ message.created_at|date:"H:i" }}
+            {% if message.is_flagged %} · flagged{% endif %}
+          </small>
+          <p>{{ message.message }}</p>
+        </div>
+      {% empty %}
+        <p>No messages yet.</p>
+      {% endfor %}
+    </div>
+    {% if match.status == "chatting" %}
+      <form method="post" class="chat-form">
+        {% csrf_token %}
+        {{ form.message }}
+        <button name="action" value="send">Send</button>
+      </form>
+    {% else %}
+      <p class="notice">This chat is closed.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

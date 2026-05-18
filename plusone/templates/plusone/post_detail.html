@@ -1,0 +1,49 @@
+{% extends "plusone/base.html" %}
+{% block title %}{{ post.title }} | Plus One{% endblock %}
+{% block content %}
+<section class="detail-layout">
+  <article class="activity-card large color-{{ post.activity_type }}">
+    <div class="card-meta">
+      <span>{{ post.get_activity_type_display }}</span>
+      <span class="countdown" data-deadline="{{ post.expire_time|date:'c' }}">--</span>
+    </div>
+    <h1>{{ post.title }}</h1>
+    <p>{{ post.description }}</p>
+    <div class="chips">
+      <span>{{ post.location.name }}</span>
+      <span>{{ post.location.area }}</span>
+      <span>{{ post.start_time|date:"M j, H:i" }}</span>
+      <span>{{ post.get_status_display }}</span>
+    </div>
+    {% if post.user_id == user.id %}
+      <p class="notice">This is your post. Switch demo user to swipe on it.</p>
+      {% if post.status == "active" and not post.is_expired %}
+        <a class="primary-action" href="{% url 'edit_post' post.id %}">Edit this card</a>
+      {% endif %}
+    {% elif existing_swipe %}
+      <p class="notice">You already swiped: {{ existing_swipe.get_action_display }}.</p>
+    {% else %}
+      <div class="swipe-row">
+        <form method="post" action="{% url 'swipe_post' post.id %}">
+          {% csrf_token %}
+          <button class="round pass" name="action" value="pass">×</button>
+        </form>
+        <form method="post" action="{% url 'swipe_post' post.id %}">
+          {% csrf_token %}
+          <button class="round join" name="action" value="interested">♥</button>
+        </form>
+      </div>
+    {% endif %}
+  </article>
+
+  <aside class="panel">
+    <h2>Match rules</h2>
+    <ul class="plain-list">
+      <li>Post must be active and not expired.</li>
+      <li>User cannot swipe on their own post.</li>
+      <li>Interested swipe creates a match and five-minute chat.</li>
+      <li>Pass records the swipe without creating a match.</li>
+    </ul>
+  </aside>
+</section>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "plusone/base.html" %}
+{% block title %}Create | Plus One{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">LLM-assisted post creation</p>
+    <h1>Create a temporary Plus One card.</h1>
+    <p class="lead">Type casually first, then review the structured fields before publishing.</p>
+  </div>
+</section>
+
+<section class="two-column create-layout">
+  <article class="panel">
+    <h2>1. Draft from natural language</h2>
+    <form method="post" class="stacked-form">
+      {% csrf_token %}
+      {{ assist_form.as_p }}
+      <button class="primary-action" name="action" value="assist">Ask AI to structure it</button>
+    </form>
+    {% if parsed %}
+      <div class="ai-output">
+        <strong>AI / fallback output saved to LLMLog</strong>
+        <pre>{{ parsed }}</pre>
+      </div>
+    {% endif %}
+  </article>
+
+  <article class="panel">
+    <h2>2. Review and publish</h2>
+    <form method="post" class="stacked-form">
+      {% csrf_token %}
+      {{ post_form.as_p }}
+      <button class="primary-action coral" name="action" value="publish">Publish temporary card</button>
+    </form>
+  </article>
+
+  <article class="activity-card create-preview color-{{ post_preview.activity_type }}" aria-label="Live card preview">
+    <div class="card-meta">
+      <span data-post-preview-activity>{{ post_preview.activity_label }}</span>
+      <span><span data-post-preview-expire>{{ post_preview.expire_minutes }}</span>m live</span>
+    </div>
+    <h2 data-post-preview-title>{{ post_preview.title }}</h2>
+    <p data-post-preview-description>{{ post_preview.description }}</p>
+    <div class="chips">
+      <span data-post-preview-location>{{ post_preview.location }}</span>
+      <span data-post-preview-time>{{ post_preview.start_time }}</span>
+      <span>Anonymous {{ user.userprofile.initial|default:"S" }}</span>
+    </div>
+  </article>
+</section>
+{% endblock %}

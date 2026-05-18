@@ -1,0 +1,39 @@
+{% extends "plusone/base.html" %}
+{% block title %}Profile | Plus One{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">First step</p>
+    <h1>Create your campus avatar.</h1>
+    <p class="lead">This profile keeps the live demo campus-only and lets Plus One show an anonymous identity on cards and chats.</p>
+  </div>
+  <div class="avatar-preview" aria-label="Avatar preview">{{ profile.initial }}</div>
+</section>
+
+<section class="two-column profile-grid">
+  <article class="panel">
+    <h2>Avatar setup</h2>
+    <form method="post" class="stacked-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="primary-action" type="submit">Continue to Discover</button>
+    </form>
+  </article>
+
+  <article class="panel profile-card">
+    <p class="eyebrow">Preview</p>
+    <div class="profile-preview-row">
+      <span class="avatar-bubble">{{ profile.initial }}</span>
+      <div>
+        <h2>{{ profile.display_name }}</h2>
+        <p>{{ profile.campus_area|default:"Campus area not set yet" }}</p>
+      </div>
+    </div>
+    <div class="chips">
+      <span>campus-only</span>
+      <span>anonymous chat</span>
+      <span>{{ profile.interests|default:"interests pending" }}</span>
+    </div>
+  </article>
+</section>
+{% endblock %}

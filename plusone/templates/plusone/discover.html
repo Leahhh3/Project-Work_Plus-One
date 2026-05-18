@@ -1,0 +1,91 @@
+{% extends "plusone/base.html" %}
+{% block title %}Discover | Plus One{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Nearby now</p>
+    <h1>Find a Plus One for a campus plan.</h1>
+    <p class="lead">Swipe on time-sensitive activity cards. A right swipe opens a short anonymous vibe chat when there is a match.</p>
+  </div>
+  <a class="primary-action" href="{% url 'create_post' %}">Create a Plus One</a>
+</section>
+
+<form class="filterbar" method="get">
+  <label>
+    Activity
+    <select name="activity_type">
+      <option value="">All types</option>
+      {% for value, label in activity_types %}
+        <option value="{{ value }}" {% if selected_activity_type == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    Location
+    <select name="location">
+      <option value="">All locations</option>
+      {% for location in locations %}
+        <option value="{{ location.id }}" {% if selected_location == location.id|stringformat:"s" %}selected{% endif %}>{{ location.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    Time
+    <select name="time_window">
+      <option value="">Any time</option>
+      <option value="now" {% if selected_time_window == "now" %}selected{% endif %}>Next 2 hours</option>
+      <option value="today" {% if selected_time_window == "today" %}selected{% endif %}>Today</option>
+    </select>
+  </label>
+  <button type="submit">Filter</button>
+</form>
+
+{% if matched_match %}
+  <section class="match-modal" aria-label="Match confirmation">
+    <div class="match-dialog">
+      <p class="eyebrow">Match</p>
+      <h2>It's a vibe.</h2>
+      <p>Your 5-minute anonymous chat for <strong>{{ matched_match.post.title }}</strong> is open. Decide fast, meet safely, and keep it casual.</p>
+      <div class="modal-actions">
+        <a class="primary-action" href="{% url 'chat' matched_match.id %}">Open chat</a>
+        <a class="details" href="{% url 'discover' %}">Keep swiping</a>
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+<section class="card-grid">
+  {% for post in posts %}
+    <article class="activity-card color-{{ post.activity_type }}">
+      <div class="card-meta">
+        <span>{{ post.get_activity_type_display }}</span>
+        <span class="countdown" data-deadline="{{ post.expire_time|date:'c' }}">--</span>
+      </div>
+      <h2>{{ post.title }}</h2>
+      <p>{{ post.description|truncatechars:130 }}</p>
+      <div class="chips">
+        <span>{{ post.location.name }}</span>
+        <span>{{ post.start_time|date:"M j, H:i" }}</span>
+        <span>Posted by anonymous {{ post.user.userprofile.year|default:"student" }}</span>
+      </div>
+      <div class="swipe-row">
+        <form method="post" action="{% url 'swipe_post' post.id %}">
+          {% csrf_token %}
+          <button class="round pass" name="action" value="pass" aria-label="Pass">×</button>
+        </form>
+        <a class="details" href="{% url 'post_detail' post.id %}">Details</a>
+        <form method="post" action="{% url 'swipe_post' post.id %}">
+          {% csrf_token %}
+          <button class="round join" name="action" value="interested" aria-label="Interested">♥</button>
+        </form>
+      </div>
+    </article>
+  {% empty %}
+    <section class="empty-state">
+      <h2>No active cards in your queue.</h2>
+      <p>Create a post, switch demo user, or run <code>python manage.py seed_demo</code> to load demo data.</p>
+      <a class="primary-action" href="{% url 'create_post' %}">Create one now</a>
+    </section>
+  {% endfor %}
+</section>
+{% endblock %}
