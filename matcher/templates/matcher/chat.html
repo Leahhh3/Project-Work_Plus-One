@@ -1,0 +1,70 @@
+{% extends "matcher/base.html" %}
+{% block title %}Chat | Plus One{% endblock %}
+{% block content %}
+<section class="workspace two-column">
+  <section class="phone-shell" aria-label="Anonymous chat">
+    <div class="phone-screen chat-screen" data-chat="{{ match.id }}">
+      <div class="chat-hero">
+        <div class="statusbar light">
+          <span>9:41</span>
+          <span class="status-icons"></span>
+        </div>
+        <div class="screen-head">
+          <div>
+            <p class="screen-kicker">Anonymous chat</p>
+            <h2>Decide if you vibe.</h2>
+          </div>
+          <span class="timer-pill js-countdown" data-expires-at="{{ match.chat_expires_at|date:'c' }}">05:00</span>
+        </div>
+      </div>
+
+      <div class="match-banner">
+        <div class="avatar-stack">
+          <span>Y</span>
+          <span>?</span>
+        </div>
+        <div>
+          <strong>It's a vibe</strong>
+          <small>{{ match.post.title }} | {{ llm_status.provider }}</small>
+        </div>
+      </div>
+
+      <div class="message-list" id="message-list">
+        {% for message in match.messages.all %}
+          <div class="bubble {{ message.sender }}">{{ message.body }}</div>
+        {% endfor %}
+      </div>
+
+      <button class="quick-reply" type="button" data-quick-reply="Share meeting spot">Share meeting spot <span>2 taps</span></button>
+      <button class="primary-button full pink" type="button" data-agree-button>Agree to meet</button>
+      <p class="privacy-note" id="agree-status">
+        {% if llm_status.enabled %}
+          LLM enabled: {{ llm_status.model }}.
+        {% else %}
+          LLM fallback active. Set {{ llm_status.missing }} to enable real replies.
+        {% endif %}
+      </p>
+
+      <form class="message-form" data-message-form>
+        {% csrf_token %}
+        <input name="body" placeholder="Type fast..." autocomplete="off">
+        <button type="submit" aria-label="Send message">+</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="copy-panel">
+    <p class="eyebrow">5-minute window</p>
+    <h1>Fast chat keeps the matching lightweight.</h1>
+    <p>The demo creates chat messages through a Django endpoint and auto-replies so the conversation feels alive during presentation.</p>
+    <div class="schema-card">
+      <h3>LLM integration</h3>
+      <p>matcher/llm.py calls the OpenAI Responses API when OPENAI_API_KEY is set; otherwise it uses safe fallback demo replies.</p>
+    </div>
+    <div class="schema-card">
+      <h3>Match state</h3>
+      <p>Match(chat_expires_at, host_agreed, guest_agreed) plus ChatMessage(sender, body).</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

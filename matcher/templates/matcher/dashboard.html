@@ -1,0 +1,75 @@
+{% extends "matcher/base.html" %}
+{% block title %}Dashboard | Plus One{% endblock %}
+{% block content %}
+<section class="workspace dashboard-layout">
+  <div class="copy-panel">
+    <p class="eyebrow">My Plus Ones</p>
+    <h1>Track interest before time runs out.</h1>
+    <p>The dashboard gives the presentation a clear owner view: active posts, right swipes, and matches created from the discover flow.</p>
+    <a class="primary-button" href="{% url 'matcher:create' %}">Create another Plus One</a>
+  </div>
+
+  <section class="dashboard-grid" aria-label="Plus One dashboard">
+    <article class="stat-card dark">
+      <span>{{ active_posts|length }}</span>
+      <p>active posts</p>
+    </article>
+    <article class="stat-card teal">
+      <span>{{ right_swipes }}</span>
+      <p>right swipes</p>
+    </article>
+    <article class="stat-card pink">
+      <span>{{ matches|length }}</span>
+      <p>open chats</p>
+    </article>
+
+    <section class="panel wide">
+      <div class="panel-head">
+        <h2>Active cards</h2>
+        <a href="{% url 'matcher:discover' %}">View queue</a>
+      </div>
+      {% for post in active_posts %}
+        <article class="activity-row">
+          <span class="row-accent" style="background: {{ post.accent }}"></span>
+          <div>
+            <strong>{{ post.title }}</strong>
+            <small>{{ post.starts_at|date:"H:i" }} | {{ post.location }}</small>
+          </div>
+          <span class="countdown-chip js-countdown" data-expires-at="{{ post.expires_at|date:'c' }}">{{ post.minutes_left }}m</span>
+        </article>
+      {% empty %}
+        <p class="empty-state">No active cards yet.</p>
+      {% endfor %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Recent matches</h2>
+      </div>
+      {% for match in matches %}
+        <a class="match-row" href="{% url 'matcher:chat' match.id %}">
+          <span>?</span>
+          <div>
+            <strong>{{ match.post.title }}</strong>
+            <small>{{ match.seconds_left }}s chat left</small>
+          </div>
+        </a>
+      {% empty %}
+        <p class="empty-state">Swipe right on a card to open a match.</p>
+      {% endfor %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Query idea</h2>
+      </div>
+      <div class="tag-cloud">
+        <span>time window</span>
+        <span>location radius</span>
+        <span>activity type</span>
+        <span>not expired</span>
+      </div>
+    </section>
+  </section>
+</section>
+{% endblock %}

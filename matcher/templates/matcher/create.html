@@ -1,0 +1,79 @@
+{% extends "matcher/base.html" %}
+{% block title %}Create | Plus One{% endblock %}
+{% block content %}
+<section class="workspace two-column">
+  <section class="phone-shell" aria-label="Create a Plus One activity">
+    <div class="phone-screen create-screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="status-icons"></span>
+      </div>
+      <div class="screen-head compact">
+        <div>
+          <p class="screen-kicker">Live preview</p>
+          <h2>Post a Plus One</h2>
+        </div>
+      </div>
+
+      <div class="preview-card" id="preview-card">
+        <span>Live preview</span>
+        <h3 id="preview-title">Basketball game?</h3>
+        <p id="preview-meta">Today 19:30 | Campus Sports Hall</p>
+        <small id="preview-type">Sports</small>
+      </div>
+
+      <form class="post-form" method="post" data-create-form>
+        {% csrf_token %}
+        <label>
+          <span>Theme</span>
+          <input name="title" id="title" maxlength="90" value="Basketball game tonight" required>
+        </label>
+        <label>
+          <span>Time</span>
+          <input name="starts_at" id="starts_at" type="datetime-local" value="{{ default_start }}" required>
+        </label>
+        <label>
+          <span>Location</span>
+          <input name="location" id="location" maxlength="90" value="Campus Sports Hall" required>
+        </label>
+        <label>
+          <span>Vibe note</span>
+          <input name="vibe_note" id="vibe_note" maxlength="120" value="5-minute chat first">
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea name="description" id="description" rows="3">Going to the campus game and want a seat buddy.</textarea>
+        </label>
+
+        <fieldset>
+          <legend>Activity type</legend>
+          <div class="type-grid" data-type-grid>
+            {% for value, label in activity_types %}
+              <label class="type-choice {% if value == 'sports' %}selected{% endif %}">
+                <input type="radio" name="activity_type" value="{{ value }}" {% if value == "sports" %}checked{% endif %}>
+                <span>{{ label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <label class="range-label">
+          <span>Post expires after <strong id="expires-value">45 min</strong></span>
+          <input name="expires_after" id="expires_after" type="range" min="10" max="90" step="5" value="45">
+        </label>
+        <button class="primary-button full" type="submit">Publish card</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="copy-panel">
+    <p class="eyebrow">Card-first posting</p>
+    <h1>Edit the exact card other students will swipe.</h1>
+    <p>This mirrors the Figma prototype: theme, time, place, and activity type stay visible while the student prepares a temporary request.</p>
+    <div class="schema-card">
+      <h3>Saved fields</h3>
+      <p>ActivityPost(title, description, starts_at, location, activity_type, expires_at, vibe_note)</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

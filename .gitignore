@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+db.sqlite3
+*.log
+
+docx_render_check/
+outputs/
+figma pre/
+Project-Work_Plus-One/
+tutorial/
+组员成绩单/
+
+*.docx
+*.pptx
+*.pdf

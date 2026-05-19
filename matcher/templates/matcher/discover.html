@@ -1,0 +1,57 @@
+{% extends "matcher/base.html" %}
+{% block title %}Discover | Plus One{% endblock %}
+{% block content %}
+{{ posts|json_script:"post-data" }}
+<section class="workspace two-column">
+  <div class="copy-panel">
+    <p class="eyebrow">Nearby now</p>
+    <h1>Swipe into a low-pressure campus plan.</h1>
+    <p>Left skips, right opens a short anonymous chat. The demo stores swipes and matches in SQLite so the interaction is more than a mockup.</p>
+    <div class="feature-strip">
+      <span>Expiring posts</span>
+      <span>Time + location query</span>
+      <span>5 min chat</span>
+    </div>
+  </div>
+
+  <section class="phone-shell" aria-label="Discover activity cards">
+    <div class="phone-screen discover-screen">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="status-icons"></span>
+      </div>
+      <div class="screen-head">
+        <div>
+          <p class="screen-kicker">Nearby now</p>
+          <h2>Find a Plus One</h2>
+        </div>
+        <span class="location-pill">Campus Center</span>
+      </div>
+      <div class="filter-row">
+        <button class="chip active" type="button">Now</button>
+        <button class="chip" type="button">Within 1 km</button>
+        <button class="chip" type="button">All types</button>
+      </div>
+
+      <div class="swipe-stage" id="swipe-stage" aria-live="polite"></div>
+
+      <div class="action-row">
+        <button class="round-action pass" type="button" data-swipe-button="left" aria-label="Pass card">x</button>
+        <button class="round-action info" type="button" aria-label="Show details">i</button>
+        <button class="round-action join" type="button" data-swipe-button="right" aria-label="Join card">+</button>
+      </div>
+      <p class="gesture-hint">Drag the card left or right, or use the buttons.</p>
+    </div>
+  </section>
+</section>
+
+<div class="match-modal" id="match-modal" hidden>
+  <div class="match-card">
+    <span class="match-badge">Match</span>
+    <h2>It's a vibe.</h2>
+    <p>Your 5-minute anonymous chat is open. Decide fast, meet safely, and keep it casual.</p>
+    <a class="primary-button" id="match-chat-link" href="#">Open chat</a>
+    <button class="text-button" type="button" data-close-modal>Keep swiping</button>
+  </div>
+</div>
+{% endblock %}

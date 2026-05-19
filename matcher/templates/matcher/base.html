@@ -1,0 +1,42 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Plus One{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'matcher/styles.css' %}">
+</head>
+<body>
+  <div class="app-bg">
+    <header class="topbar">
+      <a class="brand" href="{% url 'matcher:discover' %}" aria-label="Plus One discover page">
+        <img class="brand-logo" src="{% static 'matcher/plusone-logo.jpeg' %}" alt="Plus One">
+        <span class="brand-copy">
+          <small>Spontaneous Event Matcher</small>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="{% url 'matcher:discover' %}">Discover</a>
+        <a href="{% url 'matcher:create' %}">Create</a>
+        <a href="{% url 'matcher:dashboard' %}">Dashboard</a>
+      </nav>
+    </header>
+
+    {% if messages %}
+      <div class="toast-stack" aria-live="polite">
+        {% for message in messages %}
+          <div class="toast {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script src="{% static 'matcher/app.js' %}" defer></script>
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
