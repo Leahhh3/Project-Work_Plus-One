@@ -34,6 +34,8 @@ function updateCreatePreview() {
   const previewLocation = document.querySelector("[data-post-preview-location]");
   const previewTime = document.querySelector("[data-post-preview-time]");
   const previewExpire = document.querySelector("[data-post-preview-expire]");
+  const previewCard = previewTitle.closest(".activity-card");
+  const selectedActivity = activityInput?.value || "other";
 
   previewTitle.textContent = titleInput?.value || "Your Plus One title";
   previewDescription.textContent = descriptionInput?.value || "The card preview updates as you edit the structured fields.";
@@ -41,6 +43,10 @@ function updateCreatePreview() {
   previewLocation.textContent = locationInput?.selectedOptions?.[0]?.textContent || "Campus location";
   previewTime.textContent = startInput?.value || "Start time";
   previewExpire.textContent = expireInput?.value || "45";
+  if (previewCard) {
+    previewCard.classList.remove("color-food", "color-sports", "color-study", "color-club", "color-explore", "color-other");
+    previewCard.classList.add(`color-${selectedActivity}`);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

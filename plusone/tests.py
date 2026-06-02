@@ -131,6 +131,14 @@ class PlusOneTestCase(TestCase):
         self.assertEqual(profile.initial, "L")
         self.assertEqual(profile.campus_area, "Central Campus")
 
+    def test_homepage_starts_avatar_setup_without_manual_login(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Create your campus avatar.")
+        self.assertContains(response, "Avatar name")
+        self.assertTrue(get_user_model().objects.filter(username="demo_alex").exists())
+
     def test_expired_posts_do_not_appear_in_discovery(self):
         self.post.expire_time = timezone.now() - timedelta(minutes=1)
         self.post.save()

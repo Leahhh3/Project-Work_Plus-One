@@ -181,8 +181,8 @@ def login_demo(request):
     return redirect(request.GET.get("next") or "discover")
 
 
-@login_required
 def profile_setup(request):
+    ensure_authenticated_demo(request)
     profile = ensure_user_profile(request.user)
     if request.method == "POST":
         form = UserProfileForm(request.POST, instance=profile)
@@ -340,6 +340,7 @@ def dashboard(request):
         "plusone/dashboard.html",
         {
             "active_posts": active_posts,
+            "interested_total": sum(post.interested_count for post in active_posts),
             "expired_posts": expired_posts,
             "cancelled_posts": cancelled_posts,
             "matches": matches,

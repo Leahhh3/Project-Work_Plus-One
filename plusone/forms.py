@@ -10,7 +10,12 @@ class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
         fields = ["display_name", "avatar_initial", "campus_area", "major", "year", "interests"]
+        labels = {
+            "display_name": "Avatar name",
+            "avatar_initial": "Avatar initial",
+        }
         widgets = {
+            "display_name": forms.TextInput(attrs={"placeholder": "Leah"}),
             "avatar_initial": forms.TextInput(attrs={"maxlength": 2, "placeholder": "L"}),
             "interests": forms.TextInput(attrs={"placeholder": "basketball, lunch, study sprints"}),
         }

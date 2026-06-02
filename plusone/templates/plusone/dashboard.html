@@ -1,67 +1,156 @@
 {% extends "plusone/base.html" %}
 {% block title %}My Plus Ones | Plus One{% endblock %}
 {% block content %}
-<section class="hero compact">
-  <div>
-    <p class="eyebrow">Dashboard</p>
-    <h1>Track your active posts and matches.</h1>
-    <p class="lead">This page shows how user interaction changes the database during the demo.</p>
-  </div>
-  <a class="primary-action" href="{% url 'create_post' %}">Create another</a>
-</section>
+<section class="dashboard-page">
+  <header class="dashboard-hero">
+    <div class="dashboard-hero-copy">
+      <p class="eyebrow">My Plus Ones</p>
+      <h1>See interest before time runs out.</h1>
+      <p class="lead">Track active posts, right swipes, matches, and post history without leaving the web dashboard flow.</p>
+      <div class="dashboard-hero-actions">
+        <a class="primary-action" href="{% url 'create_post' %}">Create another Plus One</a>
+        <a class="secondary-action" href="{% url 'discover' %}">View Discover</a>
+      </div>
+    </div>
 
-<section class="dashboard-grid">
-  <article class="panel">
-    <h2>Active posts</h2>
-    {% for post in active_posts %}
-      <div class="row-card">
-        <strong>{{ post.title }}</strong>
-        <span>{{ post.location.name }} · <span class="countdown" data-deadline="{{ post.expire_time|date:'c' }}">--</span></span>
-        <span>{{ post.interested_count }} interested student{{ post.interested_count|pluralize }}</span>
-        <div class="row-actions">
-          <a href="{% url 'post_detail' post.id %}">View</a>
-          <a href="{% url 'edit_post' post.id %}">Edit</a>
+    <div class="dashboard-hero-visual" aria-hidden="true">
+      <div class="hero-summary-card">
+        <strong>{{ interested_total }}</strong>
+        <span>right swipes waiting</span>
+      </div>
+      <div class="hero-match-card">
+        <span class="hero-marker blue"></span>
+        <div>
+          <strong>Active cards</strong>
+          <small>{{ active_posts|length }} live on campus</small>
+        </div>
+        <span class="hero-score">Now</span>
+      </div>
+      <div class="hero-match-card">
+        <span class="hero-marker pink"></span>
+        <div>
+          <strong>Open chats</strong>
+          <small>{{ matches|length }} recent match{{ matches|length|pluralize:"es" }}</small>
+        </div>
+        <span class="hero-score">Live</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="dashboard-stats" aria-label="Dashboard summary">
+    <article class="dashboard-stat-card dark stat-swipes">
+      <strong>{{ interested_total }}</strong>
+      <span>students swiped right</span>
+    </article>
+    <article class="dashboard-stat-card stat-active">
+      <strong>{{ active_posts|length }}</strong>
+      <span>active posts</span>
+    </article>
+    <article class="dashboard-stat-card stat-matches">
+      <strong>{{ matches|length }}</strong>
+      <span>open matches</span>
+    </article>
+  </section>
+
+  <section class="dashboard-web-grid">
+    <article class="dashboard-panel dashboard-panel-wide">
+      <div class="dashboard-panel-head">
+        <div>
+          <span class="dashboard-pill active">Active</span>
+          <h2>Active posts</h2>
+        </div>
+        <a class="dashboard-text-link" href="{% url 'create_post' %}">New card</a>
+      </div>
+
+      <div class="dashboard-list">
+        {% for post in active_posts %}
+          <article class="dashboard-web-row type-{{ post.activity_type }}">
+            <div class="dashboard-row-main">
+              <strong>{{ post.title }}</strong>
+              <span>{{ post.start_time|date:"H:i" }} | {{ post.location.name }}</span>
+              <small><span class="countdown" data-deadline="{{ post.expire_time|date:'c' }}">--</span> left</small>
+            </div>
+            <div class="dashboard-row-metric">
+              <strong>{{ post.interested_count }}</strong>
+              <span>interested</span>
+            </div>
+            <div class="dashboard-row-actions">
+              <a href="{% url 'post_detail' post.id %}">View</a>
+              <a class="teal-pill" href="{% url 'edit_post' post.id %}">Edit</a>
+            </div>
+          </article>
+        {% empty %}
+          <p class="dashboard-empty">No active posts.</p>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="dashboard-panel">
+      <div class="dashboard-panel-head">
+        <div>
+          <span class="dashboard-pill">Matches</span>
+          <h2>Recent matches</h2>
         </div>
       </div>
-    {% empty %}
-      <p>No active posts.</p>
-    {% endfor %}
-  </article>
 
-  <article class="panel">
-    <h2>Matches</h2>
-    {% for match in matches %}
-      <a class="row-card" href="{% url 'chat' match.id %}">
-        <strong>{{ match.post.title }}</strong>
-        <span>{{ match.get_status_display }} · {{ match.post.location.name }}</span>
-      </a>
-    {% empty %}
-      <p>No matches yet.</p>
-    {% endfor %}
-  </article>
+      <div class="dashboard-list compact">
+        {% for match in matches %}
+          <a class="dashboard-web-row match-row-web type-{{ match.post.activity_type }}" href="{% url 'chat' match.id %}">
+            <div class="dashboard-row-main">
+              <strong>{{ match.post.title }}</strong>
+              <span>{{ match.get_status_display }} | {{ match.post.location.name }}</span>
+            </div>
+            <span class="teal-pill">Open chat</span>
+          </a>
+        {% empty %}
+          <p class="dashboard-empty">No matches yet.</p>
+        {% endfor %}
+      </div>
+    </article>
 
-  <article class="panel">
-    <h2>Expired posts</h2>
-    {% for post in expired_posts %}
-      <a class="row-card muted" href="{% url 'post_detail' post.id %}">
-        <strong>{{ post.title }}</strong>
-        <span>Expired {{ post.expire_time|date:"M j, H:i" }}</span>
-      </a>
-    {% empty %}
-      <p>No expired posts.</p>
-    {% endfor %}
-  </article>
+    <article class="dashboard-panel">
+      <div class="dashboard-panel-head">
+        <div>
+          <span class="dashboard-pill">Expired</span>
+          <h2>Expired posts</h2>
+        </div>
+      </div>
 
-  <article class="panel">
-    <h2>Cancelled posts</h2>
-    {% for post in cancelled_posts %}
-      <a class="row-card muted" href="{% url 'post_detail' post.id %}">
-        <strong>{{ post.title }}</strong>
-        <span>Cancelled · {{ post.location.name }}</span>
-      </a>
-    {% empty %}
-      <p>No cancelled posts.</p>
-    {% endfor %}
-  </article>
+      <div class="dashboard-list compact">
+        {% for post in expired_posts %}
+          <a class="dashboard-web-row muted type-{{ post.activity_type }}" href="{% url 'post_detail' post.id %}">
+            <div class="dashboard-row-main">
+              <strong>{{ post.title }}</strong>
+              <span>Expired {{ post.expire_time|date:"M j, H:i" }}</span>
+            </div>
+          </a>
+        {% empty %}
+          <p class="dashboard-empty">No expired posts.</p>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="dashboard-panel">
+      <div class="dashboard-panel-head">
+        <div>
+          <span class="dashboard-pill">Cancelled</span>
+          <h2>Cancelled posts</h2>
+        </div>
+      </div>
+
+      <div class="dashboard-list compact">
+        {% for post in cancelled_posts %}
+          <a class="dashboard-web-row muted type-{{ post.activity_type }}" href="{% url 'post_detail' post.id %}">
+            <div class="dashboard-row-main">
+              <strong>{{ post.title }}</strong>
+              <span>Cancelled | {{ post.location.name }}</span>
+            </div>
+          </a>
+        {% empty %}
+          <p class="dashboard-empty">No cancelled posts.</p>
+        {% endfor %}
+      </div>
+    </article>
+  </section>
 </section>
 {% endblock %}

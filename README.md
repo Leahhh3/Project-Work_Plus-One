@@ -11,11 +11,11 @@ Plus One is a Django-native campus activity matcher. Students create temporary a
 
 ## Main Pages
 
-- `/profile/setup/` campus avatar/profile setup.
-- `/` discovery queue with filters, swipe actions, and match modal.
+- `/` and `/profile/setup/` campus avatar/profile setup.
+- `/discover/` discovery queue with filters, swipe actions, and match modal.
 - `/create/` LLM-assisted post creation with live card preview.
 - `/posts/<id>/edit/` owner-only post editing and cancellation.
-- `/matches/` dashboard for active, matched, expired, and cancelled posts.
+- `/dashboard/` dashboard for active, matched, expired, and cancelled posts.
 - `/chat/<match_id>/` five-minute anonymous chat.
 
 ## Setup
@@ -26,6 +26,16 @@ python3 -m venv .venv
 .venv/bin/python manage.py migrate
 .venv/bin/python manage.py seed_demo --reset
 .venv/bin/python manage.py runserver
+```
+
+On Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py seed_demo --reset
+.\.venv\Scripts\python.exe manage.py runserver
 ```
 
 Open:
@@ -61,8 +71,8 @@ Run the baseline evaluation:
 
 ## Demo Flow
 
-1. Open Discover.
-2. Set or review the campus avatar profile.
+1. Open the site root and set or review the campus avatar profile.
+2. Continue to Discover.
 3. Create a post from casual text.
 4. Review the AI-generated structured card and live preview.
 5. Publish.
