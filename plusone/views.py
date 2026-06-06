@@ -1,55 +1,56 @@
+import secrets
 from datetime import timedelta
 
 from django.contrib import messages
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
-from django.http import HttpResponseForbidden
+from django.db.models import Q
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
 from .ai import generate_icebreaker, moderate_text, parse_activity_text
-from .forms import ActivityAssistForm, ActivityPostForm, ChatMessageForm, UserProfileForm
+from .forms import ActivityAssistForm, ActivityPostForm, ChatMessageForm
 from .models import ActivityPost, CampusLocation, ChatMessage, Match, Swipe, UserProfile
 
 
-DEMO_USERS = {
-    "demo_alex": {
-        "display_name": "Alex Chen",
-        "avatar_initial": "A",
-        "major": "Computer Science",
-        "year": "Sophomore",
-        "campus_area": "North Campus",
-        "interests": "basketball, lunch, study sprints",
-    },
-    "demo_blair": {
-        "display_name": "Blair Morgan",
-        "avatar_initial": "B",
-        "major": "Design",
-        "year": "Junior",
-        "campus_area": "Central Campus",
-        "interests": "club fairs, campus events, coffee",
-    },
-}
+ANONYMOUS_SESSION_USERNAME_KEY = "plusone_anonymous_username"
 
 
-def ensure_demo_user(username="demo_alex"):
+def _anonymous_profile_defaults(username):
+    code = username.removeprefix("anon_")[:4].upper()
+    return {
+        "display_name": f"Campus Guest {code}",
+        "avatar_initial": code[:2] or "CG",
+        "major": "",
+        "year": "",
+        "campus_area": "Campus",
+        "interests": "",
+    }
+
+
+def create_anonymous_user():
     User = get_user_model()
-    data = DEMO_USERS.get(username, DEMO_USERS["demo_alex"])
-    user, created = User.objects.get_or_create(username=username, defaults={"email": f"{username}@example.edu"})
-    if created:
-        user.set_password("plusone123")
-        user.save()
-    UserProfile.objects.get_or_create(user=user, defaults=data)
-    return user
+    for _ in range(10):
+        username = f"anon_{secrets.token_hex(4)}"
+        if not User.objects.filter(username=username).exists():
+            user = User(username=username)
+            user.set_unusable_password()
+            user.save()
+            UserProfile.objects.create(user=user, **_anonymous_profile_defaults(username))
+            return user
+    raise RuntimeError("Could not allocate an anonymous Plus One identity.")
 
 
 def ensure_user_profile(user):
-    defaults = {
-        "display_name": user.get_full_name() or user.username,
-        "avatar_initial": (user.username[:1] or "S").upper(),
-    }
+    if user.username.startswith("anon_"):
+        defaults = _anonymous_profile_defaults(user.username)
+    else:
+        defaults = {
+            "display_name": user.get_full_name() or user.username,
+            "avatar_initial": (user.username[:1] or "S").upper(),
+        }
     profile, _ = UserProfile.objects.get_or_create(user=user, defaults=defaults)
     if not profile.avatar_initial:
         profile.avatar_initial = (profile.display_name[:1] or user.username[:1] or "S").upper()
@@ -57,9 +58,20 @@ def ensure_user_profile(user):
     return profile
 
 
-def ensure_authenticated_demo(request):
-    if not request.user.is_authenticated:
-        login(request, ensure_demo_user())
+def ensure_anonymous_session(request):
+    if request.user.is_authenticated:
+        ensure_user_profile(request.user)
+        return request.user
+
+    username = request.session.get(ANONYMOUS_SESSION_USERNAME_KEY)
+    User = get_user_model()
+    user = User.objects.filter(username=username).first() if username else None
+    if user is None:
+        user = create_anonymous_user()
+        request.session[ANONYMOUS_SESSION_USERNAME_KEY] = user.username
+
+    login(request, user)
+    return user
 
 
 def refresh_expired_records():
@@ -128,7 +140,7 @@ def _post_edit_initial(post):
 
 
 def discover(request):
-    ensure_authenticated_demo(request)
+    ensure_anonymous_session(request)
     refresh_expired_records()
     activity_type = request.GET.get("activity_type", "")
     location_id = request.GET.get("location", "")
@@ -166,33 +178,43 @@ def discover(request):
         "selected_location": location_id,
         "selected_time_window": time_window,
         "matched_match": matched_match,
-        "demo_users": DEMO_USERS,
     }
     return render(request, "plusone/discover.html", context)
 
 
 def about(request):
-    ensure_authenticated_demo(request)
-    return render(request, "plusone/about.html", {"demo_users": DEMO_USERS})
+    ensure_anonymous_session(request)
+    return render(request, "plusone/about.html")
 
 
-def login_demo(request):
-    login(request, ensure_demo_user())
+def home(request):
+    ensure_anonymous_session(request)
+    return redirect("discover")
+
+
+def start_anonymous_session(request):
+    ensure_anonymous_session(request)
     return redirect(request.GET.get("next") or "discover")
 
 
+def reset_anonymous_identity(request):
+    if request.method != "POST":
+        return redirect("session")
+    logout(request)
+    user = create_anonymous_user()
+    request.session[ANONYMOUS_SESSION_USERNAME_KEY] = user.username
+    login(request, user)
+    messages.success(request, "A fresh temporary identity is ready.")
+    return redirect("session")
+
+
 def profile_setup(request):
-    ensure_authenticated_demo(request)
+    ensure_anonymous_session(request)
     profile = ensure_user_profile(request.user)
     if request.method == "POST":
-        form = UserProfileForm(request.POST, instance=profile)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Your campus profile is ready.")
-            return redirect(request.GET.get("next") or "discover")
-    else:
-        form = UserProfileForm(instance=profile)
-    return render(request, "plusone/profile_setup.html", {"form": form, "profile": profile, "demo_users": DEMO_USERS})
+        messages.success(request, "Your temporary identity is active.")
+        return redirect(request.GET.get("next") or "discover")
+    return render(request, "plusone/profile_setup.html", {"profile": profile})
 
 
 @login_required
@@ -230,7 +252,6 @@ def create_post(request):
             "post_form": post_form,
             "parsed": parsed,
             "post_preview": _post_form_preview(post_form),
-            "demo_users": DEMO_USERS,
         },
     )
 
@@ -243,7 +264,7 @@ def post_detail(request, post_id):
     return render(
         request,
         "plusone/post_detail.html",
-        {"post": post, "existing_swipe": existing_swipe, "demo_users": DEMO_USERS},
+        {"post": post, "existing_swipe": existing_swipe},
     )
 
 
@@ -278,7 +299,7 @@ def edit_post(request, post_id):
     return render(
         request,
         "plusone/edit_post.html",
-        {"post": post, "post_form": form, "post_preview": _post_form_preview(form), "demo_users": DEMO_USERS},
+        {"post": post, "post_form": form, "post_preview": _post_form_preview(form)},
     )
 
 
@@ -330,23 +351,56 @@ def dashboard(request):
     active_posts = (
         ActivityPost.objects.filter(user=request.user, status=ActivityPost.Status.ACTIVE, expire_time__gt=timezone.now())
         .select_related("location")
-        .annotate(interested_count=Count("swipes", filter=Q(swipes__action=Swipe.Action.INTERESTED)))
     )
     expired_posts = ActivityPost.objects.filter(user=request.user).filter(Q(status=ActivityPost.Status.EXPIRED) | Q(expire_time__lte=timezone.now()))
     cancelled_posts = ActivityPost.objects.filter(user=request.user, status=ActivityPost.Status.CANCELLED).select_related("location")
     matches = Match.objects.filter(Q(poster=request.user) | Q(swiper=request.user)).select_related("post", "poster", "swiper", "post__location")
+    open_chats_count = matches.filter(status=Match.Status.CHATTING).count()
+    handoff_count = matches.filter(status=Match.Status.AGREED).count()
     return render(
         request,
         "plusone/dashboard.html",
         {
             "active_posts": active_posts,
-            "interested_total": sum(post.interested_count for post in active_posts),
+            "open_chats_count": open_chats_count,
+            "handoff_count": handoff_count,
             "expired_posts": expired_posts,
             "cancelled_posts": cancelled_posts,
             "matches": matches,
-            "demo_users": DEMO_USERS,
         },
     )
+
+
+def _chat_message_payload(message, viewer):
+    if message.is_system:
+        sender_label = "Icebreaker"
+        bubble_class = "system"
+    elif message.sender_id == viewer.id:
+        sender_label = "You"
+        bubble_class = "mine"
+    else:
+        sender_label = "Anonymous match"
+        bubble_class = "theirs"
+    return {
+        "id": message.id,
+        "sender_label": sender_label,
+        "bubble_class": bubble_class,
+        "message": message.message,
+        "created_at": timezone.localtime(message.created_at).strftime("%H:%M"),
+        "is_flagged": message.is_flagged,
+        "is_system": message.is_system,
+    }
+
+
+def _create_chat_message(match, user, text):
+    moderation = moderate_text(user, text)
+    message = ChatMessage.objects.create(
+        match=match,
+        sender=user,
+        message=text,
+        is_flagged=bool(moderation.get("flagged")),
+    )
+    return message, moderation
 
 
 @login_required
@@ -364,13 +418,7 @@ def chat(request, match_id):
             messages.error(request, "This chat is no longer active.")
         elif form.is_valid():
             text = form.cleaned_data["message"]
-            moderation = moderate_text(request.user, text)
-            ChatMessage.objects.create(
-                match=match,
-                sender=request.user,
-                message=text,
-                is_flagged=bool(moderation.get("flagged")),
-            )
+            _, moderation = _create_chat_message(match, request.user, text)
             if moderation.get("flagged"):
                 messages.warning(request, f"Message sent but flagged for review: {moderation.get('reason', 'Safety check triggered.')}")
             return redirect("chat", match_id=match.id)
@@ -381,15 +429,55 @@ def chat(request, match_id):
             messages.success(request, "Your agreement was recorded.")
         return redirect("chat", match_id=match.id)
 
+    viewer_agreed = match.poster_agreed if request.user.id == match.poster_id else match.swiper_agreed
+    other_agreed = match.swiper_agreed if request.user.id == match.poster_id else match.poster_agreed
     return render(
         request,
         "plusone/chat.html",
-        {"match": match, "messages_list": match.messages.select_related("sender"), "form": form, "demo_users": DEMO_USERS},
+        {
+            "match": match,
+            "messages_list": match.messages.select_related("sender"),
+            "form": form,
+            "viewer_agreed": viewer_agreed,
+            "other_agreed": other_agreed,
+        },
     )
 
 
-def switch_demo_user(request, username):
-    user = ensure_demo_user(username)
-    login(request, user)
-    messages.success(request, f"Switched demo user to {user.profile.display_name if hasattr(user, 'profile') else user.username}.")
-    return redirect(request.GET.get("next") or "discover")
+@login_required
+def chat_messages(request, match_id):
+    refresh_expired_records()
+    match = get_object_or_404(Match.objects.select_related("post", "poster", "swiper"), id=match_id)
+    if not match.is_participant(request.user):
+        return HttpResponseForbidden("Only matched users can access this chat.")
+    match.mark_chat_expired_if_needed()
+
+    if request.method == "POST":
+        form = ChatMessageForm(request.POST)
+        if match.status != Match.Status.CHATTING:
+            return JsonResponse({"ok": False, "error": "This chat is no longer active."}, status=409)
+        if not form.is_valid():
+            return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+        message, moderation = _create_chat_message(match, request.user, form.cleaned_data["message"])
+        return JsonResponse(
+            {
+                "ok": True,
+                "message": _chat_message_payload(message, request.user),
+                "flagged": bool(moderation.get("flagged")),
+                "warning": moderation.get("reason", "") if moderation.get("flagged") else "",
+            }
+        )
+
+    after_id = request.GET.get("after")
+    message_qs = match.messages.select_related("sender")
+    if after_id and after_id.isdigit():
+        message_qs = message_qs.filter(id__gt=int(after_id))
+    payload = [_chat_message_payload(message, request.user) for message in message_qs]
+    return JsonResponse(
+        {
+            "ok": True,
+            "messages": payload,
+            "chat_status": match.status,
+            "chat_active": match.status == Match.Status.CHATTING,
+        }
+    )

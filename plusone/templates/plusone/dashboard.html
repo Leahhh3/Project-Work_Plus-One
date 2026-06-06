@@ -5,8 +5,8 @@
   <header class="dashboard-hero">
     <div class="dashboard-hero-copy">
       <p class="eyebrow">My Plus Ones</p>
-      <h1>See interest before time runs out.</h1>
-      <p class="lead">Track active posts, right swipes, matches, and post history without leaving the web dashboard flow.</p>
+      <h1>Keep your Plus Ones moving.</h1>
+      <p class="lead">Track active posts, open chats, meet handoffs, and post history without leaving the dashboard.</p>
       <div class="dashboard-hero-actions">
         <a class="primary-action" href="{% url 'create_post' %}">Create another Plus One</a>
         <a class="secondary-action" href="{% url 'discover' %}">View Discover</a>
@@ -15,8 +15,8 @@
 
     <div class="dashboard-hero-visual" aria-hidden="true">
       <div class="hero-summary-card">
-        <strong>{{ interested_total }}</strong>
-        <span>right swipes waiting</span>
+        <strong>{{ open_chats_count }}</strong>
+        <span>open chats</span>
       </div>
       <div class="hero-match-card">
         <span class="hero-marker blue"></span>
@@ -30,25 +30,33 @@
         <span class="hero-marker pink"></span>
         <div>
           <strong>Open chats</strong>
-          <small>{{ matches|length }} recent match{{ matches|length|pluralize:"es" }}</small>
+          <small>{{ open_chats_count }} still deciding</small>
         </div>
         <span class="hero-score">Live</span>
+      </div>
+      <div class="hero-match-card">
+        <span class="hero-marker gold"></span>
+        <div>
+          <strong>Meet handoffs</strong>
+          <small>{{ handoff_count }} agreed plan{{ handoff_count|pluralize }}</small>
+        </div>
+        <span class="hero-score">Done</span>
       </div>
     </div>
   </header>
 
   <section class="dashboard-stats" aria-label="Dashboard summary">
-    <article class="dashboard-stat-card dark stat-swipes">
-      <strong>{{ interested_total }}</strong>
-      <span>students swiped right</span>
-    </article>
     <article class="dashboard-stat-card stat-active">
       <strong>{{ active_posts|length }}</strong>
       <span>active posts</span>
     </article>
     <article class="dashboard-stat-card stat-matches">
-      <strong>{{ matches|length }}</strong>
-      <span>open matches</span>
+      <strong>{{ open_chats_count }}</strong>
+      <span>open chats</span>
+    </article>
+    <article class="dashboard-stat-card stat-handoffs">
+      <strong>{{ handoff_count }}</strong>
+      <span>meet handoffs</span>
     </article>
   </section>
 
@@ -71,8 +79,8 @@
               <small><span class="countdown" data-deadline="{{ post.expire_time|date:'c' }}">--</span> left</small>
             </div>
             <div class="dashboard-row-metric">
-              <strong>{{ post.interested_count }}</strong>
-              <span>interested</span>
+              <strong>Live</strong>
+              <span>active now</span>
             </div>
             <div class="dashboard-row-actions">
               <a href="{% url 'post_detail' post.id %}">View</a>

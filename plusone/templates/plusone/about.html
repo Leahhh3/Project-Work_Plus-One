@@ -3,24 +3,24 @@
 {% block content %}
 <section class="hero">
   <div>
-    <p class="eyebrow">Project scope</p>
-    <h1>Plus One is a Django-native MVP for spontaneous campus matching.</h1>
-    <p class="lead">It demonstrates multiple pages, user-created database records, swipe interactions, countdown timers, anonymous chat, and AI-assisted posting without npm or extra servers.</p>
+    <p class="eyebrow">Anonymous by default</p>
+    <h1>Find someone for the next thing on campus.</h1>
+    <p class="lead">Plus One gives every visitor a temporary campus identity, then keeps plans short-lived so matching stays immediate, low-pressure, and private.</p>
   </div>
 </section>
 
 <section class="dashboard-grid">
   <article class="panel">
-    <h2>Database interaction</h2>
-    <p>Users create posts, swipe, generate matches, send messages, and write AI logs. Seed data only makes the live demo easier to start.</p>
+    <h2>Temporary identity</h2>
+    <p>No account, password, or public profile is required. Your browser session holds the identity used for posts, matches, and chats.</p>
   </article>
   <article class="panel">
-    <h2>AI integration</h2>
-    <p>OpenAI is used when <code>OPENAI_API_KEY</code> is available. Otherwise the app uses deterministic fallback logic so the demo still works offline.</p>
+    <h2>Fast matching</h2>
+    <p>Cards expire quickly, interested swipes open a five-minute chat, and both people decide whether to meet before the moment passes.</p>
   </article>
   <article class="panel">
-    <h2>MVP path</h2>
-    <p>Create → AI card → Publish → Switch user → Swipe → Match → Chat → Agree → Dashboard.</p>
+    <h2>Private by design</h2>
+    <p>Public cards show anonymous campus context only. Chats are limited to matched participants and safety checks run before content goes live.</p>
   </article>
 </section>
 {% endblock %}

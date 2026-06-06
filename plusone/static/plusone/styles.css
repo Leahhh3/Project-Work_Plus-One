@@ -55,7 +55,7 @@ textarea {
 
 .brand,
 .nav,
-.demo-switcher,
+.identity-summary,
 .swipe-row,
 .chips,
 .filterbar,
@@ -92,19 +92,19 @@ textarea {
 }
 
 .nav a,
-.demo-switcher a {
+.identity-summary a {
   padding: 9px 12px;
   border-radius: 999px;
   color: var(--muted);
 }
 
 .nav a:hover,
-.demo-switcher a:hover {
+.identity-summary a:hover {
   background: var(--mint);
   color: var(--teal-dark);
 }
 
-.demo-switcher {
+.identity-summary {
   gap: 8px;
   font-size: 13px;
 }
@@ -205,11 +205,16 @@ h2 {
 .primary-action,
 .filterbar button,
 .chat-form button {
+  align-items: center;
   border: 0;
   background: var(--teal);
   color: var(--white);
   border-radius: 999px;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1.2;
   padding: 12px 18px;
+  text-align: center;
   font-weight: 800;
   cursor: pointer;
 }
@@ -453,6 +458,21 @@ h2 {
   color: var(--muted);
 }
 
+.lead-small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.identity-action-form {
+  margin-top: 22px;
+}
+
+.identity-reset-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
 .stacked-form {
   display: grid;
   gap: 14px;
@@ -541,6 +561,56 @@ code {
   gap: 8px;
   margin: 18px 0;
   color: var(--muted);
+}
+
+.handoff-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f7fffc, #f7fbff);
+  border: 1px solid color-mix(in srgb, var(--teal) 30%, var(--line));
+}
+
+.handoff-card h2 {
+  margin: 0;
+}
+
+.handoff-card dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.handoff-card dl div {
+  display: grid;
+  gap: 3px;
+}
+
+.handoff-card dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.handoff-card dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.safety-note {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.handoff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .chat-panel {
@@ -639,12 +709,18 @@ code {
 }
 
 .secondary-action {
+  align-items: center;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: #344054;
+  display: inline-flex;
   font-weight: 800;
+  justify-content: center;
+  line-height: 1.2;
   padding: 11px 18px;
   background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  text-align: center;
 }
 
 .phone-shell {
@@ -1538,6 +1614,10 @@ code {
   background: var(--coral);
 }
 
+.hero-marker.gold {
+  background: var(--lemon);
+}
+
 .hero-match-card strong,
 .hero-match-card small,
 .hero-score {
@@ -1598,7 +1678,8 @@ code {
 }
 
 .dashboard-stat-card.stat-active,
-.dashboard-stat-card.stat-matches {
+.dashboard-stat-card.stat-matches,
+.dashboard-stat-card.stat-handoffs {
   color: var(--navy);
 }
 
@@ -1632,8 +1713,24 @@ code {
   width: 42%;
 }
 
+.dashboard-stat-card.stat-handoffs {
+  background:
+    radial-gradient(circle at 86% 16%, rgba(255, 214, 87, 0.58) 0 34px, transparent 35px),
+    linear-gradient(135deg, #fff8dc 0%, #fffdf5 48%, #e7fbf7 49% 100%);
+  border-color: #f7df8a;
+}
+
+.dashboard-stat-card.stat-handoffs::after {
+  background:
+    linear-gradient(135deg, rgba(255, 214, 87, 0.62), rgba(22, 214, 208, 0.42));
+  border-radius: 28px 0 0 28px;
+  opacity: 0.3;
+  width: 42%;
+}
+
 .dashboard-stat-card.stat-active strong,
-.dashboard-stat-card.stat-matches strong {
+.dashboard-stat-card.stat-matches strong,
+.dashboard-stat-card.stat-handoffs strong {
   color: var(--navy);
 }
 
@@ -1834,7 +1931,7 @@ code {
   }
 
   .nav,
-  .demo-switcher {
+  .identity-summary {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
@@ -2271,4 +2368,13 @@ code {
 
 .dashboard-web-row.muted {
   opacity: 1;
+}
+
+.activity-card::before {
+  display: none;
+}
+
+.activity-card h1,
+.activity-card h2 {
+  margin-top: 28px;
 }

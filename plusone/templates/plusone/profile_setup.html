@@ -1,39 +1,49 @@
 {% extends "plusone/base.html" %}
-{% block title %}Profile | Plus One{% endblock %}
+{% block title %}Session | Plus One{% endblock %}
 {% block content %}
 <section class="hero compact">
   <div>
-    <p class="eyebrow">First step</p>
-    <h1>Create your campus avatar.</h1>
-    <p class="lead">This profile keeps the live demo campus-only and lets Plus One show an anonymous identity on cards and chats.</p>
+    <p class="eyebrow">Anonymous session</p>
+    <h1>You're anonymous here.</h1>
+    <p class="lead">This temporary session keeps your posts, swipes, matches, and chats separate in this browser. It is not a public profile.</p>
   </div>
   <div class="avatar-preview" aria-label="Avatar preview">{{ profile.initial }}</div>
 </section>
 
 <section class="two-column profile-grid">
   <article class="panel">
-    <h2>Avatar setup</h2>
-    <form method="post" class="stacked-form">
+    <p class="eyebrow">Private session {{ profile.initial }}</p>
+    <h2>What others can see</h2>
+    <ul class="plain-list">
+      <li>Your activity card details.</li>
+      <li>Your anonymous chat messages after a match.</li>
+      <li>Your agree-to-meet status inside that chat.</li>
+    </ul>
+    <h2>What stays hidden</h2>
+    <ul class="plain-list">
+      <li>Your session key.</li>
+      <li>Your browser identity.</li>
+      <li>The internal user record that keeps this session working.</li>
+    </ul>
+    <div class="chips">
+      <span>no sign-up</span>
+      <span>no password</span>
+      <span>browser session only</span>
+    </div>
+    <form method="post" class="identity-action-form">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button class="primary-action" type="submit">Continue to Discover</button>
+      <button class="primary-action" type="submit">Back to Discover</button>
     </form>
   </article>
 
   <article class="panel profile-card">
-    <p class="eyebrow">Preview</p>
-    <div class="profile-preview-row">
-      <span class="avatar-bubble">{{ profile.initial }}</span>
-      <div>
-        <h2>{{ profile.display_name }}</h2>
-        <p>{{ profile.campus_area|default:"Campus area not set yet" }}</p>
-      </div>
-    </div>
-    <div class="chips">
-      <span>campus-only</span>
-      <span>anonymous chat</span>
-      <span>{{ profile.interests|default:"interests pending" }}</span>
-    </div>
+    <p class="eyebrow">Session persistence</p>
+    <h2>This identity stays in this browser.</h2>
+    <p class="lead-small">It remains available until your cookies/session are cleared or you start fresh. It does not follow you to another device or browser.</p>
+    <form method="post" action="{% url 'reset_anonymous_identity' %}" class="identity-reset-form" data-confirm-reset="Starting fresh means this browser will lose access to your current posts, matches, and chats. Start fresh?">
+      {% csrf_token %}
+      <button class="secondary-action" type="submit">Start fresh identity</button>
+    </form>
   </article>
 </section>
 {% endblock %}

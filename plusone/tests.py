@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -58,7 +58,7 @@ class PlusOneTestCase(TestCase):
             {
                 "action": "publish",
                 "title": "Bring a weapon to the game",
-                "description": "unsafe demo text",
+                "description": "unsafe product text",
                 "activity_type": ActivityPost.ActivityType.SPORTS,
                 "location": self.location.id,
                 "start_time": (timezone.localtime() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M"),
@@ -103,41 +103,95 @@ class PlusOneTestCase(TestCase):
         self.post.refresh_from_db()
         self.assertEqual(self.post.status, ActivityPost.Status.CANCELLED)
 
-    def test_create_page_auto_logs_in_demo_user(self):
+    def test_create_page_auto_starts_anonymous_session(self):
         response = self.client.get(reverse("create_post"), follow=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.request["PATH_INFO"], reverse("create_post"))
         self.assertContains(response, "Create a temporary Plus One card.")
-        self.assertTrue(get_user_model().objects.filter(username="demo_alex").exists())
+        self.assertTrue(get_user_model().objects.filter(username__startswith="anon_").exists())
 
-    def test_profile_setup_saves_avatar_profile(self):
-        self.client.force_login(self.swiper)
-        response = self.client.post(
-            reverse("profile_setup"),
-            {
-                "display_name": "Leah",
-                "avatar_initial": "L",
-                "campus_area": "Central Campus",
-                "major": "Informatics",
-                "year": "Master",
-                "interests": "basketball, lunch",
-            },
-        )
+    def test_anonymous_session_reuses_same_identity(self):
+        User = get_user_model()
 
-        self.assertEqual(response.status_code, 302)
-        profile = UserProfile.objects.get(user=self.swiper)
-        self.assertEqual(profile.display_name, "Leah")
-        self.assertEqual(profile.initial, "L")
-        self.assertEqual(profile.campus_area, "Central Campus")
+        self.client.get(reverse("home"))
+        first_user_id = self.client.session["_auth_user_id"]
+        self.client.get(reverse("discover"))
+        second_user_id = self.client.session["_auth_user_id"]
 
-    def test_homepage_starts_avatar_setup_without_manual_login(self):
+        self.assertEqual(first_user_id, second_user_id)
+        self.assertEqual(User.objects.filter(username__startswith="anon_").count(), 1)
+
+    def test_home_redirects_to_discover_with_anonymous_session(self):
         response = self.client.get(reverse("home"))
 
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("discover"))
+        self.assertTrue(get_user_model().objects.filter(username__startswith="anon_").exists())
+
+    def test_reset_anonymous_identity_creates_fresh_session_user(self):
+        User = get_user_model()
+
+        self.client.get(reverse("home"))
+        first_user_id = self.client.session["_auth_user_id"]
+        response = self.client.post(reverse("reset_anonymous_identity"))
+        second_user_id = self.client.session["_auth_user_id"]
+
+        self.assertEqual(response.status_code, 302)
+        self.assertNotEqual(first_user_id, second_user_id)
+        self.assertEqual(User.objects.filter(username__startswith="anon_").count(), 2)
+
+    def test_profile_setup_enters_discover_without_collecting_profile_fields(self):
+        response = self.client.post(reverse("profile_setup"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("discover"))
+        profile = UserProfile.objects.get(user_id=self.client.session["_auth_user_id"])
+        self.assertTrue(profile.display_name.startswith("Campus Guest "))
+
+    def test_session_page_explains_anonymous_visibility_without_profile_fields(self):
+        response = self.client.get(reverse("session"))
+
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Create your campus avatar.")
-        self.assertContains(response, "Avatar name")
-        self.assertTrue(get_user_model().objects.filter(username="demo_alex").exists())
+        self.assertContains(response, "You're anonymous here.")
+        self.assertContains(response, "What others can see")
+        self.assertContains(response, "What stays hidden")
+        self.assertContains(response, "data-confirm-reset")
+        self.assertNotContains(response, "Temporary name")
+        self.assertTrue(get_user_model().objects.filter(username__startswith="anon_").exists())
+
+    def test_anonymous_users_can_create_match_and_chat(self):
+        User = get_user_model()
+        creator = Client()
+        swiper = Client()
+
+        creator.get(reverse("home"))
+        creator_user = User.objects.get(id=creator.session["_auth_user_id"])
+        create_response = creator.post(
+            reverse("create_post"),
+            {
+                "action": "publish",
+                "title": "Anonymous coffee",
+                "description": "Quick coffee before class.",
+                "activity_type": ActivityPost.ActivityType.FOOD,
+                "location": self.location.id,
+                "start_time": (timezone.localtime() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M"),
+                "expire_minutes": "30",
+            },
+        )
+        self.assertEqual(create_response.status_code, 302)
+        post = ActivityPost.objects.get(title="Anonymous coffee")
+        self.assertEqual(post.user, creator_user)
+
+        swiper.get(reverse("home"))
+        swiper_user = User.objects.get(id=swiper.session["_auth_user_id"])
+        swipe_response = swiper.post(reverse("swipe_post", args=[post.id]), {"action": Swipe.Action.INTERESTED})
+        self.assertEqual(swipe_response.status_code, 302)
+
+        match = Match.objects.get(post=post, swiper=swiper_user)
+        chat_response = swiper.get(reverse("chat", args=[match.id]))
+        self.assertEqual(chat_response.status_code, 200)
+        self.assertContains(chat_response, "Anonymous vibe chat")
 
     def test_expired_posts_do_not_appear_in_discovery(self):
         self.post.expire_time = timezone.now() - timedelta(minutes=1)
@@ -233,6 +287,116 @@ class PlusOneTestCase(TestCase):
         self.assertTrue(message.is_flagged)
         self.assertTrue(LLMLog.objects.filter(task_type=LLMLog.TaskType.MODERATION, output_json__flagged=True).exists())
 
+    def test_single_agree_shows_waiting_state(self):
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
+
+        self.client.force_login(self.swiper)
+        response = self.client.post(reverse("chat", args=[match.id]), {"action": "agree"}, follow=True)
+
+        match.refresh_from_db()
+        self.assertEqual(match.status, Match.Status.CHATTING)
+        self.assertTrue(match.swiper_agreed)
+        self.assertContains(response, "You agreed. Waiting for the other person.")
+        self.assertNotContains(response, "You both agreed to meet.")
+
+    def test_both_agree_shows_meet_handoff_and_closes_input(self):
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
+        match.mark_agreed(self.swiper)
+
+        self.client.force_login(self.poster)
+        response = self.client.post(reverse("chat", args=[match.id]), {"action": "agree"}, follow=True)
+
+        match.refresh_from_db()
+        self.assertEqual(match.status, Match.Status.AGREED)
+        self.assertContains(response, "You both agreed to meet.")
+        self.assertContains(response, self.post.location.name)
+        self.assertContains(response, "Meet in a public place.")
+        self.assertContains(response, "Back to Dashboard")
+        self.assertNotContains(response, "Type fast... this chat expires soon.")
+
+    def test_agreed_match_does_not_accept_new_message(self):
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            status=Match.Status.AGREED,
+            poster_agreed=True,
+            swiper_agreed=True,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
+
+        self.client.force_login(self.swiper)
+        response = self.client.post(reverse("chat", args=[match.id]), {"action": "send", "message": "After agree"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ChatMessage.objects.filter(match=match, message="After agree").exists())
+
+    def test_chat_messages_endpoint_returns_messages_after_id(self):
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
+        first = ChatMessage.objects.create(match=match, sender=self.poster, message="First")
+        second = ChatMessage.objects.create(match=match, sender=self.swiper, message="Second")
+
+        self.client.force_login(self.poster)
+        response = self.client.get(f"{reverse('chat_messages', args=[match.id])}?after={first.id}")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual([message["id"] for message in data["messages"]], [second.id])
+        self.assertEqual(data["messages"][0]["sender_label"], "Anonymous match")
+
+    def test_chat_messages_endpoint_posts_message_json(self):
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
+
+        self.client.force_login(self.swiper)
+        response = self.client.post(reverse("chat_messages", args=[match.id]), {"message": "See you there"})
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["message"]["message"], "See you there")
+        self.assertEqual(data["message"]["sender_label"], "You")
+        self.assertTrue(ChatMessage.objects.filter(match=match, sender=self.swiper, message="See you there").exists())
+
+    def test_chat_messages_endpoint_reports_inactive_after_agreement(self):
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            status=Match.Status.AGREED,
+            poster_agreed=True,
+            swiper_agreed=True,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
+
+        self.client.force_login(self.poster)
+        response = self.client.get(reverse("chat_messages", args=[match.id]))
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["chat_status"], Match.Status.AGREED)
+        self.assertFalse(data["chat_active"])
+
     def test_llm_parser_logs_output_with_fallback(self):
         result = parse_activity_text(self.poster, "Tonight 7pm basketball game at the sports hall")
         self.assertEqual(result["activity_type"], ActivityPost.ActivityType.SPORTS)
@@ -255,6 +419,25 @@ class PlusOneTestCase(TestCase):
             swiper=self.swiper,
             chat_expires_at=timezone.now() + timedelta(minutes=5),
         )
+        agreed_post = ActivityPost.objects.create(
+            user=self.poster,
+            title="Agreed handoff",
+            description="Ready to meet",
+            activity_type=ActivityPost.ActivityType.STUDY,
+            location=self.location,
+            start_time=timezone.now() + timedelta(hours=2),
+            expire_time=timezone.now() + timedelta(minutes=45),
+            status=ActivityPost.Status.MATCHED,
+        )
+        Match.objects.create(
+            post=agreed_post,
+            poster=self.poster,
+            swiper=self.swiper,
+            status=Match.Status.AGREED,
+            poster_agreed=True,
+            swiper_agreed=True,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
         cancelled = ActivityPost.objects.create(
             user=self.poster,
             title="Cancelled coffee",
@@ -270,3 +453,6 @@ class PlusOneTestCase(TestCase):
         self.assertContains(response, self.post.title)
         self.assertContains(response, expired.title)
         self.assertContains(response, cancelled.title)
+        self.assertContains(response, "open chats")
+        self.assertContains(response, "meet handoffs")
+        self.assertNotContains(response, "students swiped right")

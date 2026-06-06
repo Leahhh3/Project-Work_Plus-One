@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Nearby now</p>
     <h1>Find a Plus One for a campus plan.</h1>
-    <p class="lead">Swipe on time-sensitive activity cards. A right swipe opens a short anonymous vibe chat when there is a match.</p>
+    <p class="lead">Swipe on time-sensitive activity cards with your temporary identity. A right swipe opens a short anonymous vibe chat when there is a match.</p>
   </div>
   <a class="primary-action" href="{% url 'create_post' %}">Create a Plus One</a>
 </section>
@@ -66,7 +66,7 @@
       <div class="chips">
         <span>{{ post.location.name }}</span>
         <span>{{ post.start_time|date:"M j, H:i" }}</span>
-        <span>Posted by anonymous {{ post.user.userprofile.year|default:"student" }}</span>
+        <span>Posted by anonymous student</span>
       </div>
       <div class="swipe-row">
         <form method="post" action="{% url 'swipe_post' post.id %}">
@@ -83,7 +83,7 @@
   {% empty %}
     <section class="empty-state">
       <h2>No active cards in your queue.</h2>
-      <p>Create a post, switch demo user, or run <code>python manage.py seed_demo</code> to load demo data.</p>
+      <p>Create the next campus plan and let another temporary identity discover it.</p>
       <a class="primary-action" href="{% url 'create_post' %}">Create one now</a>
     </section>
   {% endfor %}
