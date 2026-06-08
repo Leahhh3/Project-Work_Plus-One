@@ -1,6 +1,8 @@
 from datetime import timedelta
+from io import StringIO
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -222,6 +224,19 @@ class PlusOneTestCase(TestCase):
         self.assertTrue(Match.objects.filter(post=self.post, swiper=self.swiper).exists())
         self.assertTrue(ChatMessage.objects.filter(is_system=True).exists())
 
+    def test_matched_post_does_not_create_second_match(self):
+        other = get_user_model().objects.create_user(username="other", password="pass")
+
+        self.client.force_login(self.swiper)
+        self.client.post(reverse("swipe_post", args=[self.post.id]), {"action": Swipe.Action.INTERESTED})
+
+        self.client.force_login(other)
+        response = self.client.post(reverse("swipe_post", args=[self.post.id]), {"action": Swipe.Action.INTERESTED})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("discover"))
+        self.assertEqual(Match.objects.filter(post=self.post).count(), 1)
+
     def test_discover_shows_match_modal_for_participant(self):
         match = Match.objects.create(
             post=self.post,
@@ -258,6 +273,22 @@ class PlusOneTestCase(TestCase):
         self.client.get(reverse("chat", args=[match.id]))
         match.refresh_from_db()
         self.assertEqual(match.status, Match.Status.EXPIRED)
+
+    def test_agree_on_expired_chat_does_not_record_agreement(self):
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            chat_expires_at=timezone.now() - timedelta(seconds=1),
+        )
+
+        self.client.force_login(self.swiper)
+        response = self.client.post(reverse("chat", args=[match.id]), {"action": "agree"})
+
+        match.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(match.status, Match.Status.EXPIRED)
+        self.assertFalse(match.swiper_agreed)
 
     def test_expired_chat_does_not_accept_new_message(self):
         match = Match.objects.create(
@@ -456,3 +487,60 @@ class PlusOneTestCase(TestCase):
         self.assertContains(response, "open chats")
         self.assertContains(response, "meet handoffs")
         self.assertNotContains(response, "students swiped right")
+
+    def test_expire_records_command_marks_old_posts_and_chats(self):
+        self.post.expire_time = timezone.now() - timedelta(minutes=1)
+        self.post.save(update_fields=["expire_time"])
+        match = Match.objects.create(
+            post=self.post,
+            poster=self.poster,
+            swiper=self.swiper,
+            chat_expires_at=timezone.now() - timedelta(seconds=1),
+        )
+
+        output = StringIO()
+        call_command("expire_records", stdout=output)
+
+        self.post.refresh_from_db()
+        match.refresh_from_db()
+        self.assertEqual(self.post.status, ActivityPost.Status.EXPIRED)
+        self.assertEqual(match.status, Match.Status.EXPIRED)
+        self.assertIn("Expired", output.getvalue())
+
+    def test_cleanup_anonymous_sessions_dry_run_does_not_delete(self):
+        User = get_user_model()
+        old_user = User.objects.create_user(username="anon_old")
+        old_user.date_joined = timezone.now() - timedelta(days=10)
+        old_user.last_login = timezone.now() - timedelta(days=10)
+        old_user.save(update_fields=["date_joined", "last_login"])
+
+        output = StringIO()
+        call_command("cleanup_anonymous_sessions", "--days", "7", stdout=output)
+
+        self.assertTrue(User.objects.filter(username="anon_old").exists())
+        self.assertIn("Dry run", output.getvalue())
+
+    def test_cleanup_anonymous_sessions_commit_keeps_live_identity(self):
+        User = get_user_model()
+        stale_user = User.objects.create_user(username="anon_stale")
+        stale_user.date_joined = timezone.now() - timedelta(days=10)
+        stale_user.last_login = timezone.now() - timedelta(days=10)
+        stale_user.save(update_fields=["date_joined", "last_login"])
+        live_user = User.objects.create_user(username="anon_live")
+        live_user.date_joined = timezone.now() - timedelta(days=10)
+        live_user.last_login = timezone.now() - timedelta(days=10)
+        live_user.save(update_fields=["date_joined", "last_login"])
+        ActivityPost.objects.create(
+            user=live_user,
+            title="Live anonymous post",
+            description="Still active",
+            activity_type=ActivityPost.ActivityType.STUDY,
+            location=self.location,
+            start_time=timezone.now() + timedelta(hours=1),
+            expire_time=timezone.now() + timedelta(minutes=30),
+        )
+
+        call_command("cleanup_anonymous_sessions", "--days", "7", "--commit", stdout=StringIO())
+
+        self.assertFalse(User.objects.filter(username="anon_stale").exists())
+        self.assertTrue(User.objects.filter(username="anon_live").exists())
