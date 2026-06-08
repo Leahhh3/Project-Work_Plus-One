@@ -11,23 +11,17 @@
 <body>
   <header class="topbar">
     <a class="brand" href="{% url 'discover' %}">
-      <span class="brand-mark">+1</span>
-      <span>
-        <strong>Plus One</strong>
-        <small>Spontaneous campus matcher</small>
-      </span>
+      <img class="brand-logo" src="{% static 'plusone/plusone-logo.jpeg' %}" alt="Plus One">
     </a>
     <nav class="nav">
       <a href="{% url 'discover' %}">Discover</a>
       <a href="{% url 'create_post' %}">Create</a>
       <a href="{% url 'dashboard' %}">My Plus Ones</a>
-      <a href="{% url 'profile_setup' %}">Profile</a>
       <a href="{% url 'about' %}">About</a>
     </nav>
-    <div class="demo-switcher">
-      <span>Demo user: <strong>{{ user.userprofile.display_name|default:user.username }}</strong></span>
-      <a href="{% url 'switch_demo_user' 'demo_alex' %}?next={{ request.path }}">Alex</a>
-      <a href="{% url 'switch_demo_user' 'demo_blair' %}?next={{ request.path }}">Blair</a>
+    <div class="identity-summary">
+      <span>Anonymous session <strong>{{ user.userprofile.initial|default:"ON" }}</strong></span>
+      <a href="{% url 'session' %}?next={{ request.path }}">Manage</a>
     </div>
   </header>
 

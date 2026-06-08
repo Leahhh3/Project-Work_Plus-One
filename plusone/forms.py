@@ -3,21 +3,7 @@ from datetime import timedelta
 from django import forms
 from django.utils import timezone
 
-from .models import ActivityPost, CampusLocation, UserProfile
-
-
-class UserProfileForm(forms.ModelForm):
-    class Meta:
-        model = UserProfile
-        fields = ["display_name", "avatar_initial", "campus_area", "major", "year", "interests"]
-        widgets = {
-            "avatar_initial": forms.TextInput(attrs={"maxlength": 2, "placeholder": "L"}),
-            "interests": forms.TextInput(attrs={"placeholder": "basketball, lunch, study sprints"}),
-        }
-
-    def clean_avatar_initial(self):
-        value = self.cleaned_data.get("avatar_initial", "").strip().upper()
-        return value[:2]
+from .models import ActivityPost, CampusLocation
 
 
 class ActivityAssistForm(forms.Form):
@@ -38,7 +24,7 @@ class ActivityPostForm(forms.ModelForm):
         min_value=5,
         max_value=180,
         initial=45,
-        help_text="Minutes. MVP default is 45.",
+        help_text="Minutes. Default is 45.",
     )
 
     class Meta:
