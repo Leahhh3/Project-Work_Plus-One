@@ -10,9 +10,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from .ai import generate_icebreaker, moderate_text, parse_activity_text
+from .ai import moderate_text, parse_activity_text
 from .forms import ActivityAssistForm, ActivityPostForm, ChatMessageForm
 from .models import ActivityPost, CampusLocation, ChatMessage, Match, Swipe, UserProfile
+from .services.chat import record_agreement
+from .services.expiration import refresh_expired_records
+from .services.matching import SwipeOutcome, handle_swipe
 
 
 ANONYMOUS_SESSION_USERNAME_KEY = "plusone_anonymous_username"
@@ -72,12 +75,6 @@ def ensure_anonymous_session(request):
 
     login(request, user)
     return user
-
-
-def refresh_expired_records():
-    now = timezone.now()
-    ActivityPost.objects.filter(status=ActivityPost.Status.ACTIVE, expire_time__lte=now).update(status=ActivityPost.Status.EXPIRED)
-    Match.objects.filter(status=Match.Status.CHATTING, chat_expires_at__lte=now).update(status=Match.Status.EXPIRED)
 
 
 def _post_initial_from_ai(parsed):
@@ -308,41 +305,24 @@ def swipe_post(request, post_id):
     if request.method != "POST":
         return redirect("post_detail", post_id=post_id)
     refresh_expired_records()
-    post = get_object_or_404(ActivityPost.objects.select_related("user", "location"), id=post_id)
-    action = request.POST.get("action")
-    if post.user_id == request.user.id:
+    result = handle_swipe(request.user, post_id, request.POST.get("action"))
+    if result.outcome == SwipeOutcome.OWN_POST:
         messages.error(request, "You cannot swipe on your own Plus One post.")
-        return redirect("post_detail", post_id=post.id)
-    if post.is_expired or post.status != ActivityPost.Status.ACTIVE:
+        return redirect("post_detail", post_id=result.post_id)
+    if result.outcome == SwipeOutcome.INACTIVE_POST:
         messages.error(request, "This post is no longer active.")
         return redirect("discover")
-    if action not in [Swipe.Action.INTERESTED, Swipe.Action.PASS]:
+    if result.outcome == SwipeOutcome.INVALID_ACTION:
         messages.error(request, "Unknown swipe action.")
-        return redirect("post_detail", post_id=post.id)
-
-    Swipe.objects.update_or_create(user=request.user, post=post, defaults={"action": action})
-    if action == Swipe.Action.PASS:
+        return redirect("post_detail", post_id=result.post_id)
+    if result.outcome == SwipeOutcome.PASSED:
         messages.info(request, "Skipped. The queue is ready for the next card.")
         return redirect("discover")
-
-    match, created = Match.objects.get_or_create(
-        post=post,
-        swiper=request.user,
-        defaults={
-            "poster": post.user,
-            "chat_expires_at": timezone.now() + timedelta(minutes=5),
-        },
-    )
-    if created:
-        post.status = ActivityPost.Status.MATCHED
-        post.save(update_fields=["status", "updated_at"])
-        icebreaker = generate_icebreaker(request.user, post)
-        ChatMessage.objects.create(match=match, sender=None, message=icebreaker, is_system=True)
+    if result.outcome == SwipeOutcome.MATCH_CREATED:
         messages.success(request, "It's a vibe. You have five minutes to chat.")
-        return redirect(f"{reverse('discover')}?matched={match.id}")
-    else:
-        messages.info(request, "You already matched on this post.")
-    return redirect("chat", match_id=match.id)
+        return redirect(f"{reverse('discover')}?matched={result.match_id}")
+    messages.info(request, "You already matched on this post.")
+    return redirect("chat", match_id=result.match_id)
 
 
 @login_required
@@ -424,8 +404,8 @@ def chat(request, match_id):
             return redirect("chat", match_id=match.id)
 
     if request.method == "POST" and request.POST.get("action") == "agree":
-        if match.status == Match.Status.CHATTING:
-            match.mark_agreed(request.user)
+        agreement = record_agreement(match.id, request.user)
+        if agreement.recorded:
             messages.success(request, "Your agreement was recorded.")
         return redirect("chat", match_id=match.id)
 
