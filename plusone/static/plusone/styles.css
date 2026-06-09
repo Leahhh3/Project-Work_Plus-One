@@ -415,6 +415,31 @@ h2 {
   grid-template-columns: 1fr 0.8fr;
 }
 
+.about-story {
+  grid-template-columns: 1fr 1fr;
+}
+
+.about-band {
+  align-items: center;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr auto;
+  margin-top: 24px;
+  padding: 28px;
+}
+
+.about-band h2 {
+  margin-top: 0;
+}
+
+.about-band p:last-child {
+  margin-bottom: 0;
+}
+
+.about-chips {
+  margin-top: 18px;
+}
+
 .create-layout {
   grid-template-columns: 0.8fr 1fr 0.8fr;
   align-items: start;
@@ -516,6 +541,23 @@ code {
   border-radius: 10px;
   padding: 12px;
   font-weight: 700;
+}
+
+.activity-card .notice {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.12);
+  color: var(--navy);
+}
+
+.owner-actions {
+  align-items: stretch;
+  gap: 12px;
+}
+
+.owner-actions .details,
+.owner-actions .primary-action {
+  flex: 1;
 }
 
 .row-card {
@@ -1926,7 +1968,9 @@ code {
   .dashboard-stats,
   .dashboard-web-grid,
   .create-layout,
-  .profile-grid {
+  .profile-grid,
+  .about-story,
+  .about-band {
     grid-template-columns: 1fr;
   }
 

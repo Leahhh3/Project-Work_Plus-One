@@ -202,6 +202,15 @@ class PlusOneTestCase(TestCase):
         response = self.client.get(reverse("discover"))
         self.assertNotContains(response, self.post.title)
 
+    def test_discover_shows_current_users_live_post_without_swipe_controls(self):
+        self.client.force_login(self.poster)
+        response = self.client.get(reverse("discover"))
+
+        self.assertContains(response, self.post.title)
+        self.assertContains(response, "Your card is live")
+        self.assertContains(response, reverse("edit_post", args=[self.post.id]))
+        self.assertNotContains(response, 'aria-label="Interested"')
+
     def test_user_cannot_swipe_own_post(self):
         self.client.force_login(self.poster)
         response = self.client.post(reverse("swipe_post", args=[self.post.id]), {"action": Swipe.Action.INTERESTED})
@@ -487,6 +496,15 @@ class PlusOneTestCase(TestCase):
         self.assertContains(response, "open chats")
         self.assertContains(response, "meet handoffs")
         self.assertNotContains(response, "students swiped right")
+
+    def test_about_page_describes_product_flow_and_privacy(self):
+        response = self.client.get(reverse("about"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "From plan to handoff in one short flow.")
+        self.assertContains(response, "What stays hidden")
+        self.assertContains(response, "Built for campus timing")
+        self.assertContains(response, "Open Discover")
 
     def test_expire_records_command_marks_old_posts_and_chats(self):
         self.post.expire_time = timezone.now() - timedelta(minutes=1)

@@ -5,22 +5,56 @@
   <div>
     <p class="eyebrow">Anonymous by default</p>
     <h1>Find someone for the next thing on campus.</h1>
-    <p class="lead">Plus One gives every visitor a temporary campus identity, then keeps plans short-lived so matching stays immediate, low-pressure, and private.</p>
+    <p class="lead">Plus One helps students turn small campus moments into low-pressure meetups: lunch before class, a study sprint, a sports event, or a quick walk across campus.</p>
   </div>
 </section>
 
 <section class="dashboard-grid">
   <article class="panel">
     <h2>Temporary identity</h2>
-    <p>No account, password, or public profile is required. Your browser session holds the identity used for posts, matches, and chats.</p>
+    <p>No account, password, or public profile is required. Each browser session gets a temporary identity that can create posts, swipe on plans, match, and chat.</p>
   </article>
   <article class="panel">
     <h2>Fast matching</h2>
-    <p>Cards expire quickly, interested swipes open a five-minute chat, and both people decide whether to meet before the moment passes.</p>
+    <p>Activity cards expire quickly, so Discover stays focused on plans that are happening soon. A right swipe opens a five-minute anonymous chat.</p>
   </article>
   <article class="panel">
     <h2>Private by design</h2>
-    <p>Public cards show anonymous campus context only. Chats are limited to matched participants and safety checks run before content goes live.</p>
+    <p>Public cards show only the plan, time, and campus location. Chats stay between matched users, and safety checks help keep posts and messages appropriate.</p>
   </article>
+</section>
+
+<section class="two-column about-story">
+  <article class="panel">
+    <p class="eyebrow">How it works</p>
+    <h2>From plan to handoff in one short flow.</h2>
+    <ol class="plain-list">
+      <li>Create a time-limited Plus One card for something you already want to do.</li>
+      <li>Other anonymous sessions discover the card and swipe if they are interested.</li>
+      <li>A match opens a short chat so both people can check the vibe quickly.</li>
+      <li>If both agree, Plus One shows the meeting place, time, and a safety reminder.</li>
+    </ol>
+  </article>
+
+  <article class="panel">
+    <p class="eyebrow">What stays hidden</p>
+    <h2>Anonymous does not mean unstructured.</h2>
+    <p>Your temporary identity is tied to this browser session only. Other people see your activity card and your chat messages after matching, but not your account record, session key, or private browser identity.</p>
+    <div class="chips about-chips">
+      <span>no sign-up</span>
+      <span>browser session</span>
+      <span>short-lived cards</span>
+      <span>matched chat only</span>
+    </div>
+  </article>
+</section>
+
+<section class="panel about-band">
+  <div>
+    <p class="eyebrow">Built for campus timing</p>
+    <h2>Plus One is for plans that are easier with one more person.</h2>
+    <p>Instead of building a permanent social profile, the app keeps the focus on the immediate plan: what it is, where it happens, when it starts, and whether both people feel comfortable meeting.</p>
+  </div>
+  <a class="primary-action" href="{% url 'discover' %}">Open Discover</a>
 </section>
 {% endblock %}

@@ -56,7 +56,7 @@
 
 <section class="card-grid">
   {% for post in posts %}
-    <article class="activity-card color-{{ post.activity_type }}">
+    <article class="activity-card color-{{ post.activity_type }}{% if post.user_id == user.id %} own-card{% endif %}">
       <div class="card-meta">
         <span>{{ post.get_activity_type_display }}</span>
         <span class="countdown" data-deadline="{{ post.expire_time|date:'c' }}">--</span>
@@ -66,19 +66,31 @@
       <div class="chips">
         <span>{{ post.location.name }}</span>
         <span>{{ post.start_time|date:"M j, H:i" }}</span>
-        <span>Posted by anonymous student</span>
+        {% if post.user_id == user.id %}
+          <span>Your live card</span>
+        {% else %}
+          <span>Posted by anonymous student</span>
+        {% endif %}
       </div>
-      <div class="swipe-row">
-        <form method="post" action="{% url 'swipe_post' post.id %}">
-          {% csrf_token %}
-          <button class="round pass" name="action" value="pass" aria-label="Pass">×</button>
-        </form>
-        <a class="details" href="{% url 'post_detail' post.id %}">Details</a>
-        <form method="post" action="{% url 'swipe_post' post.id %}">
-          {% csrf_token %}
-          <button class="round join" name="action" value="interested" aria-label="Interested">♥</button>
-        </form>
-      </div>
+      {% if post.user_id == user.id %}
+        <p class="notice">Your card is live. Other anonymous sessions can discover and swipe on it.</p>
+        <div class="swipe-row owner-actions">
+          <a class="details" href="{% url 'post_detail' post.id %}">View</a>
+          <a class="primary-action" href="{% url 'edit_post' post.id %}">Edit this card</a>
+        </div>
+      {% else %}
+        <div class="swipe-row">
+          <form method="post" action="{% url 'swipe_post' post.id %}">
+            {% csrf_token %}
+            <button class="round pass" name="action" value="pass" aria-label="Pass">×</button>
+          </form>
+          <a class="details" href="{% url 'post_detail' post.id %}">Details</a>
+          <form method="post" action="{% url 'swipe_post' post.id %}">
+            {% csrf_token %}
+            <button class="round join" name="action" value="interested" aria-label="Interested">♥</button>
+          </form>
+        </div>
+      {% endif %}
     </article>
   {% empty %}
     <section class="empty-state">

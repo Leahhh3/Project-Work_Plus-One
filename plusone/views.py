@@ -146,7 +146,6 @@ def discover(request):
     swiped_ids = Swipe.objects.filter(user=request.user).values_list("post_id", flat=True)
     posts = (
         ActivityPost.objects.active()
-        .exclude(user=request.user)
         .exclude(id__in=swiped_ids)
         .select_related("user", "location")
     )
