@@ -73,7 +73,7 @@
         {% endif %}
       </div>
       {% if post.user_id == user.id %}
-        <p class="notice">Your card is live. Other anonymous sessions can discover and swipe on it.</p>
+        <p class="notice owner-notice">Your card is live.</p>
         <div class="swipe-row owner-actions">
           <a class="details" href="{% url 'post_detail' post.id %}">View</a>
           <a class="primary-action" href="{% url 'edit_post' post.id %}">Edit this card</a>

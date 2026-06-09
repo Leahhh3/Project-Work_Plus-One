@@ -2422,3 +2422,13 @@ code {
 .activity-card h2 {
   margin-top: 28px;
 }
+
+.activity-card .notice,
+.activity-card p.notice,
+.activity-card .notice.owner-notice {
+  background: var(--mint) !important;
+  border: 1px solid rgba(7, 61, 67, 0.14) !important;
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.16);
+  color: #a8b0bd !important;
+  line-height: 1.45;
+}
