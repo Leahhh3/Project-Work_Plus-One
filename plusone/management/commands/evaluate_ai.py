@@ -55,7 +55,7 @@ class Command(BaseCommand):
             ("Rule fallback activity type accuracy", f"{correct_type}/{len(SAMPLES)}"),
             ("Rule fallback location accuracy", f"{correct_location}/{len(SAMPLES)}"),
             ("Rule fallback safety accuracy", f"{safety_correct}/{len(SAFETY_SAMPLES)}"),
-            ("LLM strategy", "Available at runtime when OPENAI_API_KEY is set; outputs are logged in LLMLog."),
+            ("LLM strategy", "Available at runtime when DEEPSEEK_API_KEY or OPENAI_API_KEY is set; outputs are logged in LLMLog."),
         ]
         self.stdout.write("Plus One AI evaluation summary")
         self.stdout.write("-" * 36)

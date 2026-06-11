@@ -24,6 +24,10 @@ UNSAFE_KEYWORDS = {
 }
 
 
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_DEFAULT_MODEL = "deepseek-v4-flash"
+
+
 def _save_log(user, task_type, input_text, output_json=None, output_text="", model="", strategy="rule_fallback", success=True, started_at=None):
     latency_ms = 0
     if started_at is not None:
@@ -145,26 +149,75 @@ def rule_parse_activity(text):
     }
 
 
-def _openai_client():
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
+def _llm_config():
+    deepseek_api_key = os.environ.get("DEEPSEEK_API_KEY")
+    if deepseek_api_key:
+        return {
+            "api_key": deepseek_api_key,
+            "base_url": os.environ.get("DEEPSEEK_BASE_URL", DEEPSEEK_BASE_URL),
+            "model": (
+                os.environ.get("PLUSONE_LLM_MODEL")
+                or os.environ.get("DEEPSEEK_MODEL")
+                or getattr(settings, "PLUSONE_DEEPSEEK_MODEL", DEEPSEEK_DEFAULT_MODEL)
+            ),
+            "strategy": "deepseek",
+        }
+
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    if openai_api_key:
+        return {
+            "api_key": openai_api_key,
+            "base_url": os.environ.get("OPENAI_BASE_URL", ""),
+            "model": (
+                os.environ.get("PLUSONE_LLM_MODEL")
+                or os.environ.get("PLUSONE_OPENAI_MODEL")
+                or getattr(settings, "PLUSONE_OPENAI_MODEL", "gpt-4o-mini")
+            ),
+            "strategy": "openai",
+        }
+
+    return None
+
+
+def _llm_client():
+    config = _llm_config()
+    if not config:
         return None
     try:
         from openai import OpenAI
     except Exception:
         return None
-    return OpenAI(api_key=api_key)
+
+    kwargs = {"api_key": config["api_key"]}
+    if config["base_url"]:
+        kwargs["base_url"] = config["base_url"]
+    return OpenAI(**kwargs), config
+
+
+def _chat_completion(client, llm_config, **kwargs):
+    kwargs["model"] = llm_config["model"]
+    if llm_config["strategy"] == "deepseek":
+        extra_body = kwargs.pop("extra_body", {}) or {}
+        thinking_type = os.environ.get("DEEPSEEK_THINKING", "disabled").strip().lower()
+        if thinking_type not in {"enabled", "disabled"}:
+            thinking_type = "disabled"
+        extra_body.setdefault("thinking", {"type": thinking_type})
+        kwargs["extra_body"] = extra_body
+    return client.chat.completions.create(**kwargs)
 
 
 def parse_activity_text(user, text):
     started_at = time.perf_counter()
-    model = getattr(settings, "PLUSONE_OPENAI_MODEL", "gpt-4o-mini")
-    client = _openai_client()
+    llm = _llm_client()
     locations = list(CampusLocation.objects.values_list("name", flat=True))
-    if client:
+    if llm:
+        client, llm_config = llm
+        model = llm_config["model"]
+        strategy = llm_config["strategy"]
         try:
-            response = client.chat.completions.create(
-                model=model,
+            response = _chat_completion(
+                client,
+                llm_config,
                 response_format={"type": "json_object"},
                 messages=[
                     {
@@ -183,11 +236,11 @@ def parse_activity_text(user, text):
             parsed = json.loads(raw)
             fallback = rule_parse_activity(text)
             merged = {**fallback, **{k: v for k, v in parsed.items() if v}}
-            _save_log(user, LLMLog.TaskType.PARSE_POST, text, merged, raw, model, "openai", True, started_at)
+            _save_log(user, LLMLog.TaskType.PARSE_POST, text, merged, raw, model, strategy, True, started_at)
             return merged
         except Exception as exc:
             parsed = rule_parse_activity(text)
-            _save_log(user, LLMLog.TaskType.PARSE_POST, text, parsed, str(exc), model, "openai_failed_rule_fallback", False, started_at)
+            _save_log(user, LLMLog.TaskType.PARSE_POST, text, parsed, str(exc), model, f"{strategy}_failed_rule_fallback", False, started_at)
             return parsed
 
     parsed = rule_parse_activity(text)
@@ -210,23 +263,26 @@ def rule_generate_icebreaker(post):
 def generate_icebreaker(user, post):
     started_at = time.perf_counter()
     prompt = f"{post.title} at {post.location.name}, type={post.activity_type}"
-    model = getattr(settings, "PLUSONE_OPENAI_MODEL", "gpt-4o-mini")
-    client = _openai_client()
-    if client:
+    llm = _llm_client()
+    if llm:
+        client, llm_config = llm
+        model = llm_config["model"]
+        strategy = llm_config["strategy"]
         try:
-            response = client.chat.completions.create(
-                model=model,
+            response = _chat_completion(
+                client,
+                llm_config,
                 messages=[
                     {"role": "system", "content": "Write one friendly, platonic, short icebreaker for a five-minute campus meetup chat."},
                     {"role": "user", "content": prompt},
                 ],
             )
             text = (response.choices[0].message.content or "").strip()[:240]
-            _save_log(user, LLMLog.TaskType.ICEBREAKER, prompt, {}, text, model, "openai", True, started_at)
+            _save_log(user, LLMLog.TaskType.ICEBREAKER, prompt, {}, text, model, strategy, True, started_at)
             return text
         except Exception as exc:
             text = rule_generate_icebreaker(post)
-            _save_log(user, LLMLog.TaskType.ICEBREAKER, prompt, {}, str(exc), model, "openai_failed_rule_fallback", False, started_at)
+            _save_log(user, LLMLog.TaskType.ICEBREAKER, prompt, {}, str(exc), model, f"{strategy}_failed_rule_fallback", False, started_at)
             return text
     text = rule_generate_icebreaker(post)
     _save_log(user, LLMLog.TaskType.ICEBREAKER, prompt, {}, text, "", "rule_fallback", True, started_at)
@@ -245,12 +301,15 @@ def rule_moderate_text(text):
 
 def moderate_text(user, text):
     started_at = time.perf_counter()
-    model = getattr(settings, "PLUSONE_OPENAI_MODEL", "gpt-4o-mini")
-    client = _openai_client()
-    if client:
+    llm = _llm_client()
+    if llm:
+        client, llm_config = llm
+        model = llm_config["model"]
+        strategy = llm_config["strategy"]
         try:
-            response = client.chat.completions.create(
-                model=model,
+            response = _chat_completion(
+                client,
+                llm_config,
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": "Return JSON: flagged boolean, categories array, reason string. Flag unsafe campus meetup content, harassment, personal information, or inappropriate text."},
@@ -259,11 +318,11 @@ def moderate_text(user, text):
             )
             raw = response.choices[0].message.content or "{}"
             result = json.loads(raw)
-            _save_log(user, LLMLog.TaskType.MODERATION, text, result, raw, model, "openai", True, started_at)
+            _save_log(user, LLMLog.TaskType.MODERATION, text, result, raw, model, strategy, True, started_at)
             return result
         except Exception as exc:
             result = rule_moderate_text(text)
-            _save_log(user, LLMLog.TaskType.MODERATION, text, result, str(exc), model, "openai_failed_rule_fallback", False, started_at)
+            _save_log(user, LLMLog.TaskType.MODERATION, text, result, str(exc), model, f"{strategy}_failed_rule_fallback", False, started_at)
             return result
     result = rule_moderate_text(text)
     _save_log(user, LLMLog.TaskType.MODERATION, text, result, json.dumps(result), "", "rule_fallback", True, started_at)

@@ -48,19 +48,39 @@ No registration is required. The first visit creates a temporary anonymous sessi
 
 ## AI Behavior
 
-If `OPENAI_API_KEY` is set, the app uses OpenAI for:
+If `DEEPSEEK_API_KEY` is set, the app uses DeepSeek through the OpenAI-compatible API for:
 
 - natural-language activity parsing,
 - icebreaker generation,
 - safety moderation.
 
-If no API key is set, the app automatically uses deterministic rule-based fallback. All AI and fallback calls are stored in `LLMLog`.
+Set the key in your shell before running Django:
+
+```bash
+export DEEPSEEK_API_KEY="your_deepseek_api_key"
+export DEEPSEEK_BASE_URL="https://api.deepseek.com"
+export PLUSONE_LLM_MODEL="deepseek-v4-flash"
+```
+
+Do not commit API keys. If you prefer a local `.env` file, keep it untracked and load it before starting Django:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+If `DEEPSEEK_API_KEY` is not set but `OPENAI_API_KEY` is set, the app uses OpenAI. If no API key is set, the app automatically uses deterministic rule-based fallback. All AI and fallback calls are stored in `LLMLog`.
 
 Run the baseline evaluation:
 
 ```bash
 .venv/bin/python manage.py evaluate_ai
 ```
+
+## Hosted Deployment
+
+To run one hosted instance that keeps `DEEPSEEK_API_KEY` on the server and lets other people use the app through a public URL, follow [DEPLOY_RENDER.md](DEPLOY_RENDER.md).
 
 ## Core Flow
 

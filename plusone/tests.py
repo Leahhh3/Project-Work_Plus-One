@@ -1,5 +1,7 @@
+import os
 from datetime import timedelta
 from io import StringIO
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -13,6 +15,10 @@ from .models import ActivityPost, CampusLocation, ChatMessage, LLMLog, Match, Sw
 
 class PlusOneTestCase(TestCase):
     def setUp(self):
+        self.llm_env = patch.dict(os.environ, {"DEEPSEEK_API_KEY": "", "OPENAI_API_KEY": ""})
+        self.llm_env.start()
+        self.addCleanup(self.llm_env.stop)
+
         User = get_user_model()
         self.poster = User.objects.create_user(username="poster", password="pass")
         self.swiper = User.objects.create_user(username="swiper", password="pass")
