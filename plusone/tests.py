@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import timedelta
 from io import StringIO
@@ -447,6 +448,38 @@ class PlusOneTestCase(TestCase):
         result = parse_activity_text(self.poster, "Tonight 7pm basketball game at the sports hall")
         self.assertEqual(result["activity_type"], ActivityPost.ActivityType.SPORTS)
         self.assertTrue(LLMLog.objects.filter(task_type=LLMLog.TaskType.PARSE_POST).exists())
+
+    def test_llm_parser_rejects_past_llm_start_time(self):
+        raw_response = json.dumps(
+            {
+                "title": "Basketball Game",
+                "description": "Tomorrow 7pm basketball game at the sports hall",
+                "activity_type": ActivityPost.ActivityType.SPORTS,
+                "location_name": "Campus Sports Hall",
+                "start_time": "2025-04-08T19:00:00",
+                "expire_minutes": 120,
+            }
+        )
+
+        class Message:
+            content = raw_response
+
+        class Choice:
+            message = Message()
+
+        class Response:
+            choices = [Choice()]
+
+        with (
+            patch("plusone.ai._llm_client", return_value=(object(), {"model": "deepseek-v4-flash", "strategy": "deepseek"})),
+            patch("plusone.ai._chat_completion", return_value=Response()),
+        ):
+            result = parse_activity_text(self.poster, "Tomorrow 7pm basketball game at the sports hall")
+
+        parsed_start = timezone.datetime.fromisoformat(result["start_time"])
+        self.assertGreater(parsed_start, timezone.localtime())
+        self.assertFalse(result["start_time"].startswith("2025-04-08"))
+        self.assertEqual(result["expire_minutes"], 120)
 
     def test_dashboard_separates_active_matches_expired(self):
         expired = ActivityPost.objects.create(

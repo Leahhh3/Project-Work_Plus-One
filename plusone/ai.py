@@ -149,6 +149,31 @@ def rule_parse_activity(text):
     }
 
 
+def _parse_iso_datetime(value):
+    if not value:
+        return None
+    try:
+        parsed = timezone.datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return timezone.localtime(parsed)
+
+
+def _merge_activity_parse(parsed, fallback):
+    merged = {**fallback, **{k: v for k, v in parsed.items() if v}}
+    merged_start_time = _parse_iso_datetime(merged.get("start_time"))
+    fallback_start_time = _parse_iso_datetime(fallback.get("start_time"))
+    now = timezone.localtime()
+
+    if merged_start_time is None or merged_start_time < now - timedelta(minutes=15):
+        if fallback_start_time:
+            merged["start_time"] = fallback_start_time.isoformat()
+
+    return merged
+
+
 def _llm_config():
     deepseek_api_key = os.environ.get("DEEPSEEK_API_KEY")
     if deepseek_api_key:
@@ -210,6 +235,7 @@ def parse_activity_text(user, text):
     started_at = time.perf_counter()
     llm = _llm_client()
     locations = list(CampusLocation.objects.values_list("name", flat=True))
+    now = timezone.localtime()
     if llm:
         client, llm_config = llm
         model = llm_config["model"]
@@ -225,6 +251,9 @@ def parse_activity_text(user, text):
                         "content": (
                             "Parse a college activity request into JSON with keys: "
                             "title, description, activity_type, location_name, start_time, expire_minutes. "
+                            f"Current local time is {now.isoformat()} ({timezone.get_current_timezone_name()}). "
+                            "Treat relative dates like today, tomorrow, and tonight relative to that timestamp. "
+                            "Never return a start_time in the past. If no clear date is given, use the next future occurrence. "
                             f"Use one activity_type from {[choice[0] for choice in ActivityPost.ActivityType.choices]}. "
                             f"Prefer one location from {locations}. Use ISO 8601 for start_time."
                         ),
@@ -235,7 +264,7 @@ def parse_activity_text(user, text):
             raw = response.choices[0].message.content or "{}"
             parsed = json.loads(raw)
             fallback = rule_parse_activity(text)
-            merged = {**fallback, **{k: v for k, v in parsed.items() if v}}
+            merged = _merge_activity_parse(parsed, fallback)
             _save_log(user, LLMLog.TaskType.PARSE_POST, text, merged, raw, model, strategy, True, started_at)
             return merged
         except Exception as exc:
