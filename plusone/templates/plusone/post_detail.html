@@ -16,12 +16,20 @@
       <span>{{ post.get_status_display }}</span>
     </div>
     {% if post.user_id == user.id %}
-      <p class="notice owner-notice">Your card is live.</p>
-      {% if post.status == "active" and not post.is_expired %}
+      {% if post_is_active %}
+        <p class="notice owner-notice">Your card is live.</p>
         <a class="primary-action" href="{% url 'edit_post' post.id %}">Edit this card</a>
+      {% elif post.status == "matched" %}
+        <p class="notice owner-notice">This card has a match and is no longer in Discover.</p>
+      {% elif post.status == "cancelled" %}
+        <p class="notice owner-notice">This card was cancelled.</p>
+      {% else %}
+        <p class="notice owner-notice">This card has expired.</p>
       {% endif %}
     {% elif existing_swipe %}
       <p class="notice">You already swiped: {{ existing_swipe.get_action_display }}.</p>
+    {% elif not post_is_active %}
+      <p class="notice">This Plus One is no longer active.</p>
     {% else %}
       <div class="swipe-row">
         <form method="post" action="{% url 'swipe_post' post.id %}">
