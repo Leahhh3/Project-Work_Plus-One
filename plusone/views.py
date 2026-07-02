@@ -9,6 +9,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from .ai import moderate_text, parse_activity_text
 from .forms import ActivityAssistForm, ActivityPostForm, ChatMessageForm
@@ -19,6 +20,16 @@ from .services.matching import SwipeOutcome, handle_swipe
 
 
 ANONYMOUS_SESSION_USERNAME_KEY = "plusone_anonymous_username"
+
+
+def _safe_next_redirect(request, target, fallback):
+    if target and url_has_allowed_host_and_scheme(
+        target,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(target)
+    return redirect(fallback)
 
 
 def _anonymous_profile_defaults(username):
@@ -75,6 +86,21 @@ def ensure_anonymous_session(request):
 
     login(request, user)
     return user
+
+
+def retire_anonymous_identity(user):
+    if not getattr(user, "is_authenticated", False) or not user.username.startswith("anon_"):
+        return {"posts": 0, "matches": 0}
+
+    posts = ActivityPost.objects.filter(
+        user=user,
+        status=ActivityPost.Status.ACTIVE,
+    ).update(status=ActivityPost.Status.CANCELLED, updated_at=timezone.now())
+    matches = Match.objects.filter(
+        Q(poster=user) | Q(swiper=user),
+        status=Match.Status.CHATTING,
+    ).update(status=Match.Status.EXPIRED)
+    return {"posts": posts, "matches": matches}
 
 
 def _post_initial_from_ai(parsed):
@@ -190,17 +216,21 @@ def home(request):
 
 def start_anonymous_session(request):
     ensure_anonymous_session(request)
-    return redirect(request.GET.get("next") or "discover")
+    return _safe_next_redirect(request, request.GET.get("next"), "discover")
 
 
 def reset_anonymous_identity(request):
     if request.method != "POST":
         return redirect("session")
+    retired = retire_anonymous_identity(request.user)
     logout(request)
     user = create_anonymous_user()
     request.session[ANONYMOUS_SESSION_USERNAME_KEY] = user.username
     login(request, user)
-    messages.success(request, "A fresh temporary identity is ready.")
+    if retired["posts"] or retired["matches"]:
+        messages.success(request, "A fresh temporary identity is ready. Previous live cards and open chats were closed.")
+    else:
+        messages.success(request, "A fresh temporary identity is ready.")
     return redirect("session")
 
 
@@ -209,7 +239,7 @@ def profile_setup(request):
     profile = ensure_user_profile(request.user)
     if request.method == "POST":
         messages.success(request, "Your temporary identity is active.")
-        return redirect(request.GET.get("next") or "discover")
+        return _safe_next_redirect(request, request.GET.get("next"), "discover")
     return render(request, "plusone/profile_setup.html", {"profile": profile})
 
 
@@ -257,10 +287,11 @@ def post_detail(request, post_id):
     refresh_expired_records()
     post = get_object_or_404(ActivityPost.objects.select_related("user", "location"), id=post_id)
     existing_swipe = Swipe.objects.filter(user=request.user, post=post).first()
+    post_is_active = post.status == ActivityPost.Status.ACTIVE and not post.is_expired
     return render(
         request,
         "plusone/post_detail.html",
-        {"post": post, "existing_swipe": existing_swipe},
+        {"post": post, "existing_swipe": existing_swipe, "post_is_active": post_is_active},
     )
 
 

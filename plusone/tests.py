@@ -23,15 +23,19 @@ class PlusOneTestCase(TestCase):
         User = get_user_model()
         self.poster = User.objects.create_user(username="poster", password="pass")
         self.swiper = User.objects.create_user(username="swiper", password="pass")
-        self.location = CampusLocation.objects.create(
+        self.location, _ = CampusLocation.objects.update_or_create(
             name="Campus Sports Hall",
-            location_type=CampusLocation.LocationType.SPORTS,
-            area="Central Campus",
+            defaults={
+                "location_type": CampusLocation.LocationType.SPORTS,
+                "area": "Central Campus",
+            },
         )
-        CampusLocation.objects.create(
+        CampusLocation.objects.update_or_create(
             name="Main Library",
-            location_type=CampusLocation.LocationType.STUDY,
-            area="Library Quad",
+            defaults={
+                "location_type": CampusLocation.LocationType.STUDY,
+                "area": "Library Quad",
+            },
         )
         self.post = ActivityPost.objects.create(
             user=self.poster,
@@ -150,6 +154,48 @@ class PlusOneTestCase(TestCase):
         self.assertNotEqual(first_user_id, second_user_id)
         self.assertEqual(User.objects.filter(username__startswith="anon_").count(), 2)
 
+    def test_reset_anonymous_identity_closes_previous_live_state(self):
+        User = get_user_model()
+
+        self.client.get(reverse("home"))
+        old_user = User.objects.get(id=self.client.session["_auth_user_id"])
+        old_post = ActivityPost.objects.create(
+            user=old_user,
+            title="Old anonymous lunch",
+            description="Will be closed when identity resets.",
+            activity_type=ActivityPost.ActivityType.FOOD,
+            location=self.location,
+            start_time=timezone.now() + timedelta(hours=1),
+            expire_time=timezone.now() + timedelta(minutes=45),
+        )
+        match = Match.objects.create(
+            post=old_post,
+            poster=old_user,
+            swiper=self.swiper,
+            chat_expires_at=timezone.now() + timedelta(minutes=5),
+        )
+
+        response = self.client.post(reverse("reset_anonymous_identity"))
+
+        old_post.refresh_from_db()
+        match.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(old_post.status, ActivityPost.Status.CANCELLED)
+        self.assertEqual(match.status, Match.Status.EXPIRED)
+        self.assertNotEqual(int(self.client.session["_auth_user_id"]), old_user.id)
+
+    def test_start_anonymous_session_rejects_external_next(self):
+        response = self.client.get(f"{reverse('login')}?next=https://evil.example/path")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("discover"))
+
+    def test_profile_setup_rejects_external_next(self):
+        response = self.client.post(f"{reverse('profile_setup')}?next=https://evil.example/path")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("discover"))
+
     def test_profile_setup_enters_discover_without_collecting_profile_fields(self):
         response = self.client.post(reverse("profile_setup"))
 
@@ -208,6 +254,27 @@ class PlusOneTestCase(TestCase):
         self.client.force_login(self.swiper)
         response = self.client.get(reverse("discover"))
         self.assertNotContains(response, self.post.title)
+
+    def test_inactive_post_detail_does_not_show_swipe_controls(self):
+        self.post.status = ActivityPost.Status.CANCELLED
+        self.post.save(update_fields=["status"])
+
+        self.client.force_login(self.swiper)
+        response = self.client.get(reverse("post_detail", args=[self.post.id]))
+
+        self.assertContains(response, "This Plus One is no longer active.")
+        self.assertNotContains(response, 'value="interested"')
+        self.assertNotContains(response, 'value="pass"')
+
+    def test_owner_inactive_post_detail_does_not_claim_live(self):
+        self.post.status = ActivityPost.Status.CANCELLED
+        self.post.save(update_fields=["status"])
+
+        self.client.force_login(self.poster)
+        response = self.client.get(reverse("post_detail", args=[self.post.id]))
+
+        self.assertContains(response, "This card was cancelled.")
+        self.assertNotContains(response, "Your card is live.")
 
     def test_discover_shows_current_users_live_post_without_swipe_controls(self):
         self.client.force_login(self.poster)
