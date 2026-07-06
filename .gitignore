@@ -1,7 +1,11 @@
 .venv/
+.venv-pg/
+.env
 __pycache__/
 *.pyc
 .DS_Store
 .Rhistory
 db.sqlite3
 outputs/
+staticfiles/
+*.zip
