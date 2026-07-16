@@ -20,6 +20,21 @@ Plus One is a Django-native campus activity matcher. Students get a temporary an
 - `/dashboard/` dashboard for active, matched, expired, and cancelled posts.
 - `/chat/<match_id>/` five-minute anonymous chat with near-real-time message refresh and meet handoff.
 
+## Project Structure
+
+- `config/` contains the Django settings, URL routing, and deployment entry points.
+- `plusone/models.py` defines the main data model: temporary profiles, campus locations, activity posts, swipes, matches, chat messages, and LLM logs.
+- `plusone/views.py` handles the page requests and keeps the browser flow together.
+- `plusone/templates/plusone/` contains the server-rendered pages for Discover, Create, Chat, Dashboard, and supporting views.
+- `plusone/static/plusone/` contains the CSS and JavaScript used by the interface.
+- `plusone/services/` contains the core state-changing logic, including anonymous identity reset, post saving, matching, chat agreement, and expiry.
+- `plusone/selectors.py` keeps larger database queries for Discover and Dashboard in one place.
+- `plusone/presenters.py` prepares form previews and chat payloads for the templates.
+- `plusone/ai_services/` contains the provider client, parsing, moderation, icebreaker generation, logging, and rule-based fallbacks.
+- `plusone/management/commands/` includes helper commands such as demo data seeding, record expiry, cleanup, and LLM evaluation.
+- `docs/` contains supporting documentation, including evaluation notes and the final presentation PDF.
+- `DEPLOY_RENDER.md`, `render.yaml`, and `build.sh` describe the hosted Render deployment.
+
 ## Setup
 
 ```bash
@@ -77,6 +92,10 @@ Run the baseline evaluation:
 ```bash
 .venv/bin/python manage.py evaluate_ai
 ```
+
+## Development Assistance and Quality Control
+
+We used language-model tools during development mainly for debugging help, wording improvements, and interface refinement. The team reviewed the suggested changes before using them, and the project behavior was checked through Django tests, manual end-to-end flows, and the provider benchmark in `docs/ai_evaluation.md`. The application also keeps deterministic fallbacks for parsing, moderation, and icebreakers so the main product flow can still run without external API access.
 
 ## Hosted Deployment
 
